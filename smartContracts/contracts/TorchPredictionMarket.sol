@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
-
 /**
  * @title TorchPredictionMarket
  * @dev A prediction market for TORCH token price with quality-based weighting
  * @notice This contract allows users to place bets on future TORCH token prices
  * with quality multipliers based on prediction sharpness and time horizon
  */
-contract TorchPredictionMarket is ReentrancyGuard, Ownable, Pausable {
+contract TorchPredictionMarket is Ownable {
     // ==============================================================
     // |                    Constants                               |
     // ==============================================================
@@ -132,8 +129,9 @@ contract TorchPredictionMarket is ReentrancyGuard, Ownable, Pausable {
     // ==============================================================
     // |                    Constructor                             |
     // ==============================================================
-    constructor() Ownable(msg.sender) {
+    constructor() {
         startTimestamp = block.timestamp;
+        transferOwnership(msg.sender);
     }
 
     // ==============================================================
@@ -151,7 +149,7 @@ contract TorchPredictionMarket is ReentrancyGuard, Ownable, Pausable {
         uint256 targetTimestamp,
         uint256 priceMin,
         uint256 priceMax
-    ) external payable validTimeRange(targetTimestamp) whenNotPaused nonReentrant returns (uint256) {
+    ) external payable validTimeRange(targetTimestamp) returns (uint256) {
         require(priceMin < priceMax, "Invalid price range");
         require(priceMin > 0 && priceMax > 0, "Prices must be positive");
         require(targetTimestamp > block.timestamp, "Cannot bet on past timestamps");
@@ -184,7 +182,7 @@ contract TorchPredictionMarket is ReentrancyGuard, Ownable, Pausable {
         uint256[] calldata priceMins,
         uint256[] calldata priceMaxs,
         uint256[] calldata stakeAmounts
-    ) external payable whenNotPaused nonReentrant returns (uint256[] memory betIds) {
+    ) external payable returns (uint256[] memory betIds) {
         require(
             targetTimestamps.length == priceMins.length && 
             priceMins.length == priceMaxs.length &&
@@ -319,7 +317,7 @@ contract TorchPredictionMarket is ReentrancyGuard, Ownable, Pausable {
      * @notice Claim winnings for a finalized bet (only after aggregation complete)
      * @param betId The ID of the bet to claim
      */
-    function claimBet(uint256 betId) external nonReentrant {
+    function claimBet(uint256 betId) external {
         Bet storage bet = bets[betId];
         require(bet.bettor == msg.sender, "Not bet owner");
         require(bet.finalized, "Bet not finalized");
@@ -380,20 +378,6 @@ contract TorchPredictionMarket is ReentrancyGuard, Ownable, Pausable {
     // ==============================================================
     // |                    Admin Functions                           |
     // ==============================================================
-
-    /**
-     * @notice Pause the contract (only owner)
-     */
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    /**
-     * @notice Unpause the contract (only owner)
-     */
-    function unpause() external onlyOwner {
-        _unpause();
-    }
 
     /**
      * @notice Withdraw collected fees (only owner)

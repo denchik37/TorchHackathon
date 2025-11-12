@@ -103,6 +103,12 @@ task("place-10-bets", "Place 10 bets with delays")
     return place10BetsWithDelay();
   });
 
+task("test-mainnet-flow", "Test full flow on mainnet")
+  .setAction(async () => {
+    const testMainnetFlow = require("./scripts/testMainnetFlow");
+    return testMainnetFlow();
+  });
+
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   mocha: {
