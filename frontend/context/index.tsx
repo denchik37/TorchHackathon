@@ -24,7 +24,7 @@ const metadata = {
   name: 'Torch - Crypto Prediction Market',
   description: 'Predict cryptocurrency token prices and earn rewards',
   url: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
-  icons: ['https://your-icon-url.com/icon.png'], // Replace with your actual icon URL
+  icons: ['https://your-icon-url.com/icon.png'],
 };
 
 export default function ContextProvider({ children }: { children: ReactNode }) {
