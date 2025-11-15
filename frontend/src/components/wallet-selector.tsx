@@ -1,7 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useMultiWallet, WalletType } from '@/hooks/useMultiWallet';
+import { 
+  useWallet, 
+  useAccountId, 
+  useBalance 
+} from '@buidlerlabs/hashgraph-react-wallets';
+import {
+  HashpackConnector,
+  MetamaskConnector,
+  BladeConnector,
+  KabilaConnector,
+  HWCConnector,
+} from '@buidlerlabs/hashgraph-react-wallets/connectors';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -14,11 +25,14 @@ import { Wallet, ChevronDown, User, Copy, Check, Coins, Info } from 'lucide-reac
 import { formatAddress } from '@/lib/utils';
 import { AccountDetailsModal } from '@/components/account-details-modal';
 
+type WalletType = 'hashpack' | 'metamask' | 'blade' | 'kabila' | 'walletconnect';
+
 interface WalletOption {
   name: string;
   type: WalletType;
   icon: string;
   description: string;
+  connector: any;
 }
 
 const walletOptions: WalletOption[] = [
@@ -26,53 +40,87 @@ const walletOptions: WalletOption[] = [
     name: 'HashPack',
     type: 'hashpack',
     icon: '🟣',
-    description: 'Hedera native wallet'
+    description: 'Hedera native wallet',
+    connector: HashpackConnector
   },
   {
     name: 'MetaMask',
     type: 'metamask',
     icon: '🦊',
-    description: 'Ethereum wallet with Hedera support'
+    description: 'Ethereum wallet with Hedera support',
+    connector: MetamaskConnector
   },
   {
     name: 'WalletConnect',
     type: 'walletconnect',
     icon: '🔗',
-    description: 'Connect any wallet via QR code'
+    description: 'Connect any wallet via QR code',
+    connector: HWCConnector
   },
   {
     name: 'Blade',
     type: 'blade',
     icon: '⚔️',
-    description: 'Hedera native wallet'
+    description: 'Hedera native wallet',
+    connector: BladeConnector
   },
   {
     name: 'Kabila',
     type: 'kabila',
     icon: '🔗',
-    description: 'Hedera wallet'
+    description: 'Hedera wallet',
+    connector: KabilaConnector
   }
 ];
 
 export function WalletSelector() {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const { 
-    currentWallet, 
-    currentWalletState, 
-    currentAccountId, 
-    currentAccountInfo, 
-    balance,
-    balanceLoading,
-    connectWallet, 
-    disconnectWallet 
-  } = useMultiWallet();
+  
+  // Use library's hooks directly
+  const { isConnected, disconnect, connector } = useWallet();
+  const { data: accountId } = useAccountId();
+  const { data: balanceData, isLoading: balanceLoading } = useBalance({ autoFetch: isConnected });
+  
+  // Parse balance data
+  const balance = React.useMemo(() => {
+    if (!balanceData) return null;
+    
+    // Check if it's an object with hbars property
+    if (typeof balanceData === 'object' && 'hbars' in balanceData) {
+      return balanceData.hbars.toString();
+    }
+    
+    // Check if it's an object with value property
+    if (typeof balanceData === 'object' && 'value' in balanceData) {
+      return balanceData.value.toString();
+    }
+    
+    // Try direct conversion
+    return balanceData.toString();
+  }, [balanceData]);
 
-  const handleWalletSelect = async (walletType: WalletType) => {
+  // Create wallet hooks for each connector
+  const hashpackWallet = useWallet(HashpackConnector);
+  const metamaskWallet = useWallet(MetamaskConnector);
+  const bladeWallet = useWallet(BladeConnector);
+  const kabilaWallet = useWallet(KabilaConnector);
+  const walletConnectWallet = useWallet(HWCConnector);
+  
+  const wallets = {
+    hashpack: hashpackWallet,
+    metamask: metamaskWallet,
+    blade: bladeWallet,
+    kabila: kabilaWallet,
+    walletconnect: walletConnectWallet,
+  };
+  
+  const handleWalletSelect = async (walletOption: WalletOption) => {
     setIsOpen(false);
     
     try {
-      await connectWallet(walletType);
+      const wallet = wallets[walletOption.type];
+      await wallet.connect();
     } catch (error) {
       console.error('Failed to connect wallet:', error);
     }
@@ -80,35 +128,37 @@ export function WalletSelector() {
 
   const handleDisconnect = async () => {
     try {
-      await disconnectWallet();
+      await disconnect();
     } catch (error) {
       console.error('Failed to disconnect wallet:', error);
     }
   };
 
   const handleCopyAddress = async () => {
-    if (currentAccountId) {
-      await navigator.clipboard.writeText(currentAccountId);
+    if (accountId) {
+      await navigator.clipboard.writeText(accountId);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
   };
 
-  // Get display address - prefer accountId for Hedera native wallets, address for others
-  const getDisplayAddress = () => {
-    if (!currentAccountInfo) return '';
+  // Get current wallet type from connector
+  const getWalletType = () => {
+    if (!connector) return null;
     
-    // For Hedera native wallets (hashpack, blade), show accountId
-    if (currentAccountInfo.walletType === 'hashpack' || currentAccountInfo.walletType === 'blade') {
-      return currentAccountInfo.accountId || currentAccountInfo.address;
-    }
+    const constructorName = connector.constructor?.name?.toLowerCase() || '';
     
-    // For non-Hedera wallets (metamask, walletconnect, kabila), show address
-    return currentAccountInfo.address || currentAccountInfo.accountId;
+    if (constructorName.includes('hashpack')) return 'hashpack';
+    if (constructorName.includes('metamask')) return 'metamask';
+    if (constructorName.includes('blade')) return 'blade';
+    if (constructorName.includes('kabila')) return 'kabila';
+    if (constructorName.includes('hwc') || constructorName.includes('walletconnect')) return 'walletconnect';
+    
+    return null;
   };
-
-  const displayAddress = getDisplayAddress();
-  const currentWalletOption = walletOptions.find(w => w.type === currentWallet);
+  
+  const currentWalletType = getWalletType();
+  const currentWalletOption = walletOptions.find(w => w.type === currentWalletType);
 
   const formatBalance = (balance: string | null) => {
     if (!balance) return '0 HBAR';
@@ -119,7 +169,7 @@ export function WalletSelector() {
     return `${numBalance.toFixed(2)} HBAR`;
   };
 
-  if (currentWalletState.isConnected) {
+  if (isConnected) {
     return (
       <div className="flex items-center space-x-2">
         {/* Balance Display */}
@@ -154,7 +204,7 @@ export function WalletSelector() {
         </AccountDetailsModal>
         
         {/* Account Info Button */}
-        {displayAddress && (
+        {accountId && (
           <Button
             variant="outline"
             size="sm"
@@ -162,7 +212,7 @@ export function WalletSelector() {
             onClick={handleCopyAddress}
           >
             <User className="w-3 h-3" />
-            <span className="text-xs font-mono">{formatAddress(displayAddress, 4)}</span>
+            <span className="text-xs font-mono">{formatAddress(accountId, 4)}</span>
             {copied && <Check className="w-3 h-3 text-green-400" />}
           </Button>
         )}
@@ -206,7 +256,7 @@ export function WalletSelector() {
               key={wallet.name}
               variant="outline"
               className="justify-start h-auto p-4"
-              onClick={() => handleWalletSelect(wallet.type)}
+              onClick={() => handleWalletSelect(wallet)}
             >
               <div className="flex items-center space-x-3 w-full">
                 <span className="text-2xl">{wallet.icon}</span>

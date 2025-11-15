@@ -25,23 +25,42 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { formatAddress } from '@/lib/utils';
-import { useMultiWallet } from '@/hooks/useMultiWallet';
+import { 
+  useWallet, 
+  useAccountId, 
+  useEvmAddress, 
+  useBalance,
+  useAccountInfo
+} from '@buidlerlabs/hashgraph-react-wallets';
 
 interface AccountDetailsModalProps {
   children: React.ReactNode;
 }
 
 export function AccountDetailsModal({ children }: AccountDetailsModalProps) {
-  const { 
-    currentAccountInfo, 
-    currentAccountIdQuery, 
-    currentAccountInfoQuery,
-    currentEvmAddressQuery,
-    fetchBalance,
-    balance,
-    balanceLoading,
-    balanceError 
-  } = useMultiWallet();
+  const { isConnected, connector } = useWallet();
+  const { data: accountId, isLoading: accountIdLoading, error: accountIdError } = useAccountId();
+  const { data: evmAddress, isLoading: evmAddressLoading, error: evmAddressError } = useEvmAddress();
+  const { data: accountInfo, isLoading: accountInfoLoading, error: accountInfoError } = useAccountInfo();
+  const { data: balanceData, isLoading: balanceLoading, error: balanceError, refetch: refetchBalance } = useBalance({ autoFetch: isConnected });
+  
+  // Parse balance data
+  const balance = React.useMemo(() => {
+    if (!balanceData) return null;
+    
+    // Check if it's an object with hbars property
+    if (typeof balanceData === 'object' && 'hbars' in balanceData) {
+      return balanceData.hbars.toString();
+    }
+    
+    // Check if it's an object with value property
+    if (typeof balanceData === 'object' && 'value' in balanceData) {
+      return balanceData.value.toString();
+    }
+    
+    // Try direct conversion
+    return balanceData.toString();
+  }, [balanceData]);
   
   const [copied, setCopied] = React.useState<string | null>(null);
   const [isOpen, setIsOpen] = React.useState(false);
@@ -53,11 +72,28 @@ export function AccountDetailsModal({ children }: AccountDetailsModalProps) {
   };
 
   const handleRefreshBalance = () => {
-    if (currentAccountInfo?.accountId) {
-      fetchBalance(currentAccountInfo.accountId);
+    if (accountId) {
+      refetchBalance();
     }
   };
 
+  // Get wallet type from connector
+  const getWalletType = () => {
+    if (!connector) return 'unknown';
+    
+    const constructorName = connector.constructor?.name?.toLowerCase() || '';
+    
+    if (constructorName.includes('hashpack')) return 'hashpack';
+    if (constructorName.includes('metamask')) return 'metamask';
+    if (constructorName.includes('blade')) return 'blade';
+    if (constructorName.includes('kabila')) return 'kabila';
+    if (constructorName.includes('hwc') || constructorName.includes('walletconnect')) return 'walletconnect';
+    
+    return 'unknown';
+  };
+  
+  const walletType = getWalletType();
+  
   const getWalletIcon = (walletType: string) => {
     switch (walletType) {
       case 'hashpack':
@@ -101,7 +137,7 @@ export function AccountDetailsModal({ children }: AccountDetailsModalProps) {
     return `${numBalance.toFixed(2)} HBAR`;
   };
 
-  if (!currentAccountInfo) {
+  if (!isConnected || !accountId) {
     return null;
   }
 
@@ -123,10 +159,10 @@ export function AccountDetailsModal({ children }: AccountDetailsModalProps) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <span className="text-2xl">{getWalletIcon(currentAccountInfo.walletType)}</span>
-                <span>{getWalletName(currentAccountInfo.walletType)}</span>
+                <span className="text-2xl">{getWalletIcon(walletType)}</span>
+                <span>{getWalletName(walletType)}</span>
                 <Badge variant="outline" className="ml-auto">
-                  {currentAccountInfo.isConnected ? 'Connected' : 'Disconnected'}
+                  {isConnected ? 'Connected' : 'Disconnected'}
                 </Badge>
               </CardTitle>
             </CardHeader>
@@ -134,14 +170,14 @@ export function AccountDetailsModal({ children }: AccountDetailsModalProps) {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Status</span>
-                  <Badge variant={currentAccountInfo.isConnected ? "default" : "secondary"}>
-                    {currentAccountInfo.isConnected ? 'Active' : 'Inactive'}
+                  <Badge variant={isConnected ? "default" : "secondary"}>
+                    {isConnected ? 'Active' : 'Inactive'}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Type</span>
                   <span className="text-sm font-medium">
-                    {currentAccountInfo.walletType === 'hashpack' || currentAccountInfo.walletType === 'blade' 
+                    {walletType === 'hashpack' || walletType === 'blade' 
                       ? 'Hedera Native' 
                       : 'EVM Compatible'}
                   </span>
@@ -164,46 +200,46 @@ export function AccountDetailsModal({ children }: AccountDetailsModalProps) {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">
-                      {currentAccountInfo.walletType === 'hashpack' || currentAccountInfo.walletType === 'blade' 
+                      {walletType === 'hashpack' || walletType === 'blade' 
                         ? 'Account ID' 
                         : 'Address'}
                     </span>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleCopy(currentAccountInfo.accountId || '', 'accountId')}
+                      onClick={() => handleCopy(accountId || '', 'accountId')}
                       className="flex items-center space-x-1"
                     >
                       {copied === 'accountId' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                     </Button>
                   </div>
                   <code className="block w-full p-3 bg-neutral-800 rounded text-sm break-all">
-                    {currentAccountInfo.accountId || 'N/A'}
+                    {accountId || 'N/A'}
                   </code>
                 </div>
 
                 {/* EVM Address */}
-                {currentAccountInfo.evmAddress && (
+                {evmAddress && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">EVM Address</span>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleCopy(currentAccountInfo.evmAddress || '', 'evmAddress')}
+                        onClick={() => handleCopy(evmAddress || '', 'evmAddress')}
                         className="flex items-center space-x-1"
                       >
                         {copied === 'evmAddress' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                       </Button>
                     </div>
                     <code className="block w-full p-3 bg-neutral-800 rounded text-sm break-all">
-                      {currentAccountInfo.evmAddress}
+                      {evmAddress}
                     </code>
                   </div>
                 )}
 
                 {/* Public Key */}
-                {currentAccountInfo.publicKey && (
+                {accountInfo?.publicKey && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium flex items-center space-x-1">
@@ -213,14 +249,14 @@ export function AccountDetailsModal({ children }: AccountDetailsModalProps) {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleCopy(currentAccountInfo.publicKey || '', 'publicKey')}
+                        onClick={() => handleCopy(accountInfo?.publicKey || '', 'publicKey')}
                         className="flex items-center space-x-1"
                       >
                         {copied === 'publicKey' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                       </Button>
                     </div>
                     <code className="block w-full p-3 bg-neutral-800 rounded text-sm break-all">
-                      {formatAddress(currentAccountInfo.publicKey, 8)}
+                      {formatAddress(accountInfo?.publicKey || '', 8)}
                     </code>
                   </div>
                 )}
@@ -259,7 +295,7 @@ export function AccountDetailsModal({ children }: AccountDetailsModalProps) {
                 ) : balanceError ? (
                   <div className="flex items-center space-x-2 text-red-500">
                     <AlertCircle className="w-4 h-4" />
-                    <span>{balanceError}</span>
+                    <span>{(balanceError as any).message || 'Error loading balance'}</span>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -294,14 +330,14 @@ export function AccountDetailsModal({ children }: AccountDetailsModalProps) {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Account ID Query</span>
-                    <Badge variant={currentAccountIdQuery?.isLoading ? "secondary" : "outline"}>
-                      {currentAccountIdQuery?.isLoading ? 'Loading' : 'Ready'}
+                    <Badge variant={accountIdLoading ? "secondary" : "outline"}>
+                      {accountIdLoading ? 'Loading' : 'Ready'}
                     </Badge>
                   </div>
-                  {currentAccountIdQuery?.error && (
+                  {accountIdError && (
                     <div className="flex items-center space-x-2 text-red-500 text-sm">
                       <AlertCircle className="w-4 h-4" />
-                      <span>{currentAccountIdQuery.error.message}</span>
+                      <span>{(accountIdError as any).message || 'Error loading account ID'}</span>
                     </div>
                   )}
                 </div>
@@ -310,14 +346,14 @@ export function AccountDetailsModal({ children }: AccountDetailsModalProps) {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">EVM Address Query</span>
-                    <Badge variant={currentEvmAddressQuery?.isLoading ? "secondary" : "outline"}>
-                      {currentEvmAddressQuery?.isLoading ? 'Loading' : 'Ready'}
+                    <Badge variant={evmAddressLoading ? "secondary" : "outline"}>
+                      {evmAddressLoading ? 'Loading' : 'Ready'}
                     </Badge>
                   </div>
-                  {currentEvmAddressQuery?.error && (
+                  {evmAddressError && (
                     <div className="flex items-center space-x-2 text-red-500 text-sm">
                       <AlertCircle className="w-4 h-4" />
-                      <span>{currentEvmAddressQuery.error.message}</span>
+                      <span>{(evmAddressError as any).message || 'Error loading EVM address'}</span>
                     </div>
                   )}
                 </div>
@@ -326,14 +362,14 @@ export function AccountDetailsModal({ children }: AccountDetailsModalProps) {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Account Info Query</span>
-                    <Badge variant={currentAccountInfoQuery?.isLoading ? "secondary" : "outline"}>
-                      {currentAccountInfoQuery?.isLoading ? 'Loading' : 'Ready'}
+                    <Badge variant={accountInfoLoading ? "secondary" : "outline"}>
+                      {accountInfoLoading ? 'Loading' : 'Ready'}
                     </Badge>
                   </div>
-                  {currentAccountInfoQuery?.error && (
+                  {accountInfoError && (
                     <div className="flex items-center space-x-2 text-red-500 text-sm">
                       <AlertCircle className="w-4 h-4" />
-                      <span>{currentAccountInfoQuery.error.message}</span>
+                      <span>{(accountInfoError as any).message || 'Error loading account info'}</span>
                     </div>
                   )}
                 </div>
@@ -361,7 +397,7 @@ export function AccountDetailsModal({ children }: AccountDetailsModalProps) {
                     variant="link"
                     size="sm"
                     className="p-0 h-auto"
-                    onClick={() => window.open(`https://hashscan.io/testnet/account/${currentAccountInfo.accountId}`, '_blank')}
+                    onClick={() => window.open(`https://hashscan.io/testnet/account/${accountId}`, '_blank')}
                   >
                     View on HashScan
                     <ExternalLink className="w-3 h-3 ml-1" />
