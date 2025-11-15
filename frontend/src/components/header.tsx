@@ -28,48 +28,47 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { formatAddress } from '@/lib/utils';
 import { WalletSelector } from '@/components/wallet-selector';
 import { AccountDetailsModal } from '@/components/account-details-modal';
-import { useMultiWallet } from '@/hooks/useMultiWallet';
-import { useWallet, useBalance } from '@buidlerlabs/hashgraph-react-wallets';
+import { useWallet, useBalance, useAccountId } from '@buidlerlabs/hashgraph-react-wallets';
 
 export function Header() {
-  const { isConnected } = useWallet();
-  const { data } = useBalance({ autoFetch: isConnected });
-  const balance = data?.value?.toFixed(2) ?? 0;
+  const { isConnected, disconnect } = useWallet();
+  const { data: balanceData, isLoading: balanceLoading } = useBalance({ autoFetch: isConnected });
+  const { data: accountId } = useAccountId();
+  
+  // Handle different possible balance data structures
+  const balance = React.useMemo(() => {
+    if (!balanceData) return 0;
+    
+    // Check if it's an object with hbars property
+    if (typeof balanceData === 'object' && 'hbars' in balanceData) {
+      return parseFloat(balanceData.hbars.toString());
+    }
+    
+    // Check if it's an object with value property
+    if (typeof balanceData === 'object' && 'value' in balanceData) {
+      return parseFloat(balanceData.value.toString());
+    }
+    
+    // Try direct conversion
+    return parseFloat(balanceData.toString());
+  }, [balanceData]);
 
-  const { currentWalletState, currentAccountId, currentAccountInfo, balanceLoading } =
-    useMultiWallet();
   const [copied, setCopied] = React.useState(false);
 
   const handleCopyAddress = async () => {
-    if (currentAccountId) {
-      await navigator.clipboard.writeText(currentAccountId);
+    if (accountId) {
+      await navigator.clipboard.writeText(accountId);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
   };
 
-  // Get display address - prefer accountId for Hedera native wallets, address for others
-  const getDisplayAddress = () => {
-    if (!currentAccountInfo) return '';
-
-    // For Hedera native wallets (hashpack, blade), show accountId
-    if (currentAccountInfo.walletType === 'hashpack' || currentAccountInfo.walletType === 'blade') {
-      return currentAccountInfo.accountId || currentAccountInfo.address;
-    }
-
-    // For non-Hedera wallets (metamask, walletconnect, kabila), show address
-    return currentAccountInfo.address || currentAccountInfo.accountId;
-  };
-
-  const displayAddress = getDisplayAddress();
-
-  const formatBalance = (balance: string | null) => {
+  const formatBalance = (balance: number) => {
     if (!balance) return '0 HBAR';
-    const numBalance = parseFloat(balance);
-    if (numBalance >= 1000) {
-      return `${(numBalance / 1000).toFixed(2)}k HBAR`;
+    if (balance >= 1000) {
+      return `${(balance / 1000).toFixed(2)}k HBAR`;
     }
-    return `${numBalance.toFixed(2)} HBAR`;
+    return `${balance.toFixed(2)} HBAR`;
   };
 
   return (
@@ -142,8 +141,8 @@ export function Header() {
               </AccountDetailsModal>
 
               {/* Wallet Address Button */}
-              {displayAddress && (
-                <Tooltip content={`${displayAddress} (Click to copy)`}>
+              {accountId && (
+                <Tooltip content={`${accountId} (Click to copy)`}>
                   <Button
                     variant="outline"
                     size="sm"
@@ -151,7 +150,7 @@ export function Header() {
                     onClick={handleCopyAddress}
                   >
                     <User className="w-3 h-3" />
-                    <span className="text-xs font-mono">{formatAddress(displayAddress, 4)}</span>
+                    <span className="text-xs font-mono">{formatAddress(accountId, 4)}</span>
                     {copied && <Check className="w-3 h-3 text-green-400" />}
                   </Button>
                 </Tooltip>
@@ -168,7 +167,7 @@ export function Header() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => currentWalletState.disconnect()}>
+                  <DropdownMenuItem onClick={() => disconnect()}>
                     Disconnect
                   </DropdownMenuItem>
                 </DropdownMenuContent>
