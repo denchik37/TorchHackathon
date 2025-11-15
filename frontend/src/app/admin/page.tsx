@@ -49,12 +49,13 @@ function AdminPage() {
   
   // Wallet connection
   const { isConnected } = useWallet();
-  const { writeContract, isLoading: isSubmitting } = useWriteContract();
+  const { writeContract } = useWriteContract();
 
   // Date selection - default to today
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [resolutionPrices, setResolutionPrices] = useState<[number, number][]>([]);
   const [manualPrices, setManualPrices] = useState<Map<number, number>>(new Map());
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Calculate date range for the selected day
   const getDateRange = () => {
@@ -141,14 +142,15 @@ function AdminPage() {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       // Get unique timestamps
-      const uniqueTimestamps = [...new Set(data.bets.map((bet: Bet) => bet.targetTimestamp))];
+      const uniqueTimestamps = Array.from(new Set(data.bets.map((bet: Bet) => bet.targetTimestamp)));
       
       // Filter timestamps that have prices
       const timestampsWithPrices = uniqueTimestamps
-        .filter(ts => getFinalPrice(ts) !== null)
-        .sort();
+        .filter(ts => getFinalPrice(ts as number) !== null)
+        .sort((a, b) => (a as number) - (b as number));
 
       if (timestampsWithPrices.length === 0) {
         alert('No prices to submit');
@@ -158,29 +160,32 @@ function AdminPage() {
       // Prepare data for contract
       const timestamps = timestampsWithPrices;
       const prices = timestampsWithPrices.map(ts => {
-        const price = getFinalPrice(ts)!;
+        const price = getFinalPrice(ts as number)!;
         // Convert to contract format (price in tinybars, 8 decimals)
         return parseUnits(price.toFixed(8), 8).toString();
       });
 
       console.log('Submitting prices:', { timestamps, prices });
 
-      // Call contract
+      // Call contract (using contractId instead of address for Hedera)
       const result = await writeContract({
-        address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
+        contractId: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
         abi: TorchPredictionMarketABI.abi,
         functionName: 'setPricesForTimestamps',
         args: [timestamps, prices],
       });
 
       console.log('Transaction result:', result);
-      alert(`Prices submitted successfully! TX: ${result.transactionHash}`);
+      // Result is a transaction ID string for Hedera
+      alert(`Prices submitted successfully! TX: ${result}`);
       
       // Clear manual prices after success
       setManualPrices(new Map());
     } catch (err) {
       console.error('Error submitting prices:', err);
       alert('Error submitting prices: ' + (err as any).message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -319,7 +324,7 @@ function AdminPage() {
                     <div className="w-px h-4 bg-gray-600" />
                     <span className="text-gray-400">
                       Unique times: <span className="text-white font-medium">
-                        {[...new Set(data.bets.map((b: Bet) => b.targetTimestamp))].length}
+                        {Array.from(new Set(data.bets.map((b: Bet) => b.targetTimestamp))).length}
                       </span>
                     </span>
                   </div>
