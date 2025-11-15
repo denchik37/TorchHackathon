@@ -46,7 +46,7 @@ export default function AdminPageWrapper() {
 function AdminPage() {
   const { user, isLoaded, isSignedIn } = useUser();
   const isAdmin = user?.publicMetadata?.role === 'admin';
-  
+
   // Wallet connection
   const { isConnected } = useWallet();
   const { writeContract } = useWriteContract();
@@ -64,22 +64,23 @@ function AdminPage() {
     const end = new Date(selectedDate);
     end.setDate(end.getDate() + 1);
     end.setHours(0, 0, 0, 0);
-    
+
     return {
       startTime: Math.floor(start.getTime() / 1000),
-      endTime: Math.floor(end.getTime() / 1000)
+      endTime: Math.floor(end.getTime() / 1000),
     };
   };
 
   const { startTime, endTime } = getDateRange();
-  
+
   const { data, loading, refetch } = useQuery(GET_BETS, {
     variables: { startTime, endTime },
-    skip: !isLoaded || !isSignedIn || !isAdmin
+    skip: !isLoaded || !isSignedIn || !isAdmin,
   });
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !isAdmin || loading) return;
+    if (!data?.bets || data.bets.length === 0) return;
 
     const fetchPrices = async () => {
       try {
@@ -95,7 +96,7 @@ function AdminPage() {
     };
 
     fetchPrices();
-  }, [isLoaded, loading, isSignedIn, isAdmin]);
+  }, [isLoaded, loading, isSignedIn, isAdmin, data?.bets]);
 
   const findClosestPrice = (timestamp: number): number | null => {
     if (!resolutionPrices.length) return null;
@@ -125,9 +126,9 @@ function AdminPage() {
   const handlePriceChange = (timestamp: number, value: string) => {
     const price = parseFloat(value);
     if (!isNaN(price) && price > 0) {
-      setManualPrices(prev => new Map(prev).set(timestamp, price));
+      setManualPrices((prev) => new Map(prev).set(timestamp, price));
     } else if (value === '') {
-      setManualPrices(prev => {
+      setManualPrices((prev) => {
         const newMap = new Map(prev);
         newMap.delete(timestamp);
         return newMap;
@@ -145,11 +146,13 @@ function AdminPage() {
     setIsSubmitting(true);
     try {
       // Get unique timestamps
-      const uniqueTimestamps = Array.from(new Set(data.bets.map((bet: Bet) => bet.targetTimestamp)));
-      
+      const uniqueTimestamps = Array.from(
+        new Set(data.bets.map((bet: Bet) => bet.targetTimestamp))
+      );
+
       // Filter timestamps that have prices
       const timestampsWithPrices = uniqueTimestamps
-        .filter(ts => getFinalPrice(ts as number) !== null)
+        .filter((ts) => getFinalPrice(ts as number) !== null)
         .sort((a, b) => (a as number) - (b as number));
 
       if (timestampsWithPrices.length === 0) {
@@ -157,33 +160,23 @@ function AdminPage() {
         return;
       }
 
-      // Prepare data for contract
       const timestamps = timestampsWithPrices;
-      const prices = timestampsWithPrices.map(ts => {
+      const prices = timestampsWithPrices.map((ts) => {
         const price = getFinalPrice(ts as number)!;
         // Convert to contract format (price in tinybars, 8 decimals)
         return parseUnits(price.toFixed(8), 8).toString();
       });
 
-      console.log('Submitting prices:', { timestamps, prices });
-
-      // Call contract (using contractId instead of address for Hedera)
-      const result = await writeContract({
-        contractId: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
+      await writeContract({
+        contractId: process.env.NEXT_PUBLIC_CONTRACT_ID!,
         abi: TorchPredictionMarketABI.abi,
         functionName: 'setPricesForTimestamps',
         args: [timestamps, prices],
       });
 
-      console.log('Transaction result:', result);
-      // Result is a transaction ID string for Hedera
-      alert(`Prices submitted successfully! TX: ${result}`);
-      
-      // Clear manual prices after success
       setManualPrices(new Map());
     } catch (err) {
       console.error('Error submitting prices:', err);
-      alert('Error submitting prices: ' + (err as any).message);
     } finally {
       setIsSubmitting(false);
     }
@@ -266,7 +259,7 @@ function AdminPage() {
                   <Calendar className="w-5 h-5 text-torch-purple" />
                   <h2 className="text-lg font-semibold text-white">Bet Resolution</h2>
                 </div>
-                
+
                 <div className="flex items-center bg-neutral-800 rounded-lg p-1">
                   <Button
                     variant="ghost"
@@ -280,7 +273,7 @@ function AdminPage() {
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </Button>
-                  
+
                   <input
                     type="date"
                     value={selectedDate.toISOString().split('T')[0]}
@@ -289,7 +282,7 @@ function AdminPage() {
                              [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-50
                              hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
                   />
-                  
+
                   <Button
                     variant="ghost"
                     size="icon"
@@ -323,13 +316,14 @@ function AdminPage() {
                     </span>
                     <div className="w-px h-4 bg-gray-600" />
                     <span className="text-gray-400">
-                      Unique times: <span className="text-white font-medium">
+                      Unique times:{' '}
+                      <span className="text-white font-medium">
                         {Array.from(new Set(data.bets.map((b: Bet) => b.targetTimestamp))).length}
                       </span>
                     </span>
                   </div>
                 )}
-                
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -342,17 +336,17 @@ function AdminPage() {
                 </Button>
               </div>
             </div>
-            
+
             {/* Selected Date Display */}
             <div className="mt-4 pt-4 border-t border-white/10">
               <p className="text-sm text-gray-400">
-                Showing bets with target resolution date: 
+                Showing bets with target resolution date:
                 <span className="ml-2 text-white font-medium">
-                  {selectedDate.toLocaleDateString('en-US', { 
+                  {selectedDate.toLocaleDateString('en-US', {
                     weekday: 'long',
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
                   })}
                 </span>
               </p>
@@ -368,7 +362,9 @@ function AdminPage() {
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4 font-medium text-medium-gray">Min price</th>
                     <th className="text-left py-3 px-4 font-medium text-medium-gray">Max price</th>
-                    <th className="text-left py-3 px-4 font-medium text-medium-gray">Resolution Time (UTC)</th>
+                    <th className="text-left py-3 px-4 font-medium text-medium-gray">
+                      Resolution Time (UTC)
+                    </th>
                     <th className="text-left py-3 px-4 font-medium text-medium-gray">Status</th>
                     <th className="text-left py-3 px-4 font-medium text-medium-gray">
                       Resolution price
@@ -386,24 +382,34 @@ function AdminPage() {
                       </td>
                     </tr>
                   )}
-                  
+
                   {!loading && (!data?.bets || data.bets.length === 0) && (
                     <tr>
                       <td colSpan={5} className="text-center py-12">
                         <div className="flex flex-col items-center space-y-3">
                           <div className="w-16 h-16 bg-neutral-800 rounded-full flex items-center justify-center">
-                            <svg className="w-8 h-8 text-medium-gray" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} 
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            <svg
+                              className="w-8 h-8 text-medium-gray"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={1.5}
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              />
                             </svg>
                           </div>
                           <div className="space-y-1">
                             <p className="text-white font-medium">No bets found</p>
                             <p className="text-medium-gray text-sm">
-                              No bets to resolve for {selectedDate.toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric', 
-                                year: 'numeric' 
+                              No bets to resolve for{' '}
+                              {selectedDate.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
                               })}
                             </p>
                             <p className="text-medium-gray text-sm">
@@ -414,71 +420,70 @@ function AdminPage() {
                       </td>
                     </tr>
                   )}
-                  
-                  {!loading && data?.bets?.map((bet: Bet) => {
-                    const finalPrice = getFinalPrice(bet.targetTimestamp);
-                    const fetchedPrice = findClosestPrice(bet.targetTimestamp);
-                    const isManual = manualPrices.has(bet.targetTimestamp);
-                    const priceMin = parseFloat(formatTinybarsToHbar(bet.priceMin));
-                    const priceMax = parseFloat(formatTinybarsToHbar(bet.priceMax));
-                    const isInRange =
-                      finalPrice !== null &&
-                      finalPrice >= priceMin &&
-                      finalPrice <= priceMax;
-                    const key = `${bet.priceMin}-${bet.priceMax}-${bet.targetTimestamp}`;
 
-                    return (
-                      <tr key={key} className="border-b border-white/5 hover:bg-dark-slate/50">
-                        <td className="py-3 px-4">${priceMin.toFixed(4)}</td>
-                        <td className="py-3 px-4 text-sm text-light-gray">
-                          ${priceMax.toFixed(4)}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-light-gray">
-                          {formatDateUTC(bet.targetTimestamp)}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-medium-gray">
-                          {finalPrice !== null ? (
-                            isInRange ? (
-                              <span className="text-green-500">Win</span>
+                  {!loading &&
+                    data?.bets?.map((bet: Bet) => {
+                      const finalPrice = getFinalPrice(bet.targetTimestamp);
+                      const fetchedPrice = findClosestPrice(bet.targetTimestamp);
+                      const isManual = manualPrices.has(bet.targetTimestamp);
+                      const priceMin = parseFloat(formatTinybarsToHbar(bet.priceMin));
+                      const priceMax = parseFloat(formatTinybarsToHbar(bet.priceMax));
+                      const isInRange =
+                        finalPrice !== null && finalPrice >= priceMin && finalPrice <= priceMax;
+                      const key = `${bet.priceMin}-${bet.priceMax}-${bet.targetTimestamp}`;
+
+                      return (
+                        <tr key={key} className="border-b border-white/5 hover:bg-dark-slate/50">
+                          <td className="py-3 px-4">${priceMin.toFixed(4)}</td>
+                          <td className="py-3 px-4 text-sm text-light-gray">
+                            ${priceMax.toFixed(4)}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-light-gray">
+                            {formatDateUTC(bet.targetTimestamp)}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-medium-gray">
+                            {finalPrice !== null ? (
+                              isInRange ? (
+                                <span className="text-green-500">Win</span>
+                              ) : (
+                                <span className="text-red-500">Loss</span>
+                              )
                             ) : (
-                              <span className="text-red-500">Loss</span>
-                            )
-                          ) : (
-                            <span className="text-gray-500">-</span>
-                          )}
-                        </td>
-
-                        <td>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              className={`w-24 px-2 py-1 bg-transparent border rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                isManual ? 'border-yellow-500' : 'border-gray-600'
-                              }`}
-                              placeholder={fetchedPrice?.toFixed(4) || "Price"}
-                              value={manualPrices.get(bet.targetTimestamp) ?? ''}
-                              onChange={(e) => handlePriceChange(bet.targetTimestamp, e.target.value)}
-                              step="0.0001"
-                              min="0"
-                              max="100"
-                            />
-                            {fetchedPrice && !isManual && (
-                              <span className="text-xs text-gray-500">
-                                ${fetchedPrice.toFixed(4)}
-                              </span>
+                              <span className="text-gray-500">-</span>
                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          </td>
+
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                className={`w-32 px-2 py-1 bg-transparent border rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                  isManual ? 'border-yellow-500' : 'border-gray-600'
+                                }`}
+                                placeholder="Enter price"
+                                value={
+                                  manualPrices.get(bet.targetTimestamp) ??
+                                  fetchedPrice?.toFixed(4) ??
+                                  ''
+                                }
+                                onChange={(e) =>
+                                  handlePriceChange(bet.targetTimestamp, e.target.value)
+                                }
+                                step="0.0001"
+                                min="0"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>
             {data?.bets && data.bets.length > 0 && (
               <div className="flex justify-end mt-4">
-                <Button 
-                  variant="torch" 
+                <Button
+                  variant="torch"
                   className="w-48"
                   onClick={submitPrices}
                   disabled={isSubmitting}
