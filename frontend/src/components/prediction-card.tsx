@@ -140,7 +140,7 @@ export function PredictionCard({ className }: PredictionCardProps) {
       const targetTimestamp = startUnix.toString();
 
       const betId = (await writeContract({
-        contractId: ContractId.fromString('0.0.9570085'),
+        contractId: ContractId.fromString('0.0.10096249'),
         abi: TorchPredictionMarketABI.abi,
         functionName: 'placeBet',
         args: [targetTimestamp, priceMin, priceMax],
