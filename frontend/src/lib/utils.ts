@@ -38,7 +38,7 @@ export function formatDateUTC(date: number): string {
 }
 
 export function formatTinybarsToHbar(tinybars: number | string, fractionDigits = 6) {
-  const hbar = Number(tinybars) / 10000;
+  const hbar = Number(tinybars) / 100000000;
   return hbar.toFixed(fractionDigits);
 }
 
