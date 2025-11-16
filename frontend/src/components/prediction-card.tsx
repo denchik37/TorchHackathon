@@ -17,9 +17,8 @@ import { useHbarPrice } from '@/hooks/useHbarPrice';
 import { useTorchPredictionMarket } from '@/hooks/useTorchPredictionMarket';
 import { HbarPriceDisplay } from '@/components/hbar-price-display';
 import { Bet } from '@/lib/types';
-import { ContractId, TransactionReceipt } from '@hashgraph/sdk';
+import { ContractId } from '@hashgraph/sdk';
 import { ethers } from 'ethers';
-import { parseUnits } from 'ethers/lib/utils';
 
 import {
   useWallet,
