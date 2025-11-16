@@ -3,14 +3,14 @@ import { useState } from 'react';
 import { useWallet, useEvmAddress } from '@buidlerlabs/hashgraph-react-wallets';
 import { HashpackConnector } from '@buidlerlabs/hashgraph-react-wallets/connectors';
 import { gql, useQuery } from '@apollo/client';
-import { CheckCircle, XCircle, Clock } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Coins } from 'lucide-react';
 
 import { User, Bet } from '@/lib/types';
-import { formatDateUTC, getRemainingDaysBetweenTimestamps } from '@/lib/utils';
+import { formatDateUTC, getRemainingDaysBetweenTimestamps, formatTinybarsToHbar } from '@/lib/utils';
 
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/header';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 import NoBetsContainer from '@/components/no-bets-container';
 import NoWalletConnectedContainer from '@/components/no-wallet-connected-container';
@@ -25,6 +25,9 @@ const GET_USER = gql`
         claimed
         finalized
         payout
+        stake
+        priceMin
+        priceMax
         timestamp
         targetTimestamp
       }
@@ -67,18 +70,6 @@ const getStatusText = (bet: Bet) => {
       return 'Won';
     case 'lost':
       return 'Lost';
-  }
-};
-const getCardBackground = (bet: Bet) => {
-  const status = getBetStatus(bet);
-  switch (status) {
-    case 'won':
-    case 'unredeemed':
-      return 'bg-bright-green/10 border-bright-green/20';
-    case 'lost':
-      return 'bg-magenta/10 border-magenta/20';
-    default:
-      return 'bg-dark-slate border-border';
   }
 };
 
@@ -142,47 +133,95 @@ export default function MyBetsPage() {
                       type="button"
                       key={category.id}
                       onClick={() => setActiveCategory(category.id)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         activeCategory === category.id
                           ? 'bg-vibrant-purple text-white'
-                          : 'bg-dark-slate text-light-gray hover:bg-dark-slate/80'
+                          : 'bg-neutral-900 text-light-gray hover:bg-neutral-800 border border-neutral-800'
                       }`}
                     >
-                      {category.label} {category.count}
+                      {category.label}
+                      <span className="ml-2 text-xs opacity-70">{category.count}</span>
                     </button>
                   ))}
                 </div>
 
                 {/* Bet Summary */}
-                <div className="flex space-x-4">
-                  <div className="px-4 py-2 bg-bright-green rounded-full text-sm font-medium text-white">
-                    Won {wonBets.length}
-                  </div>
-                  <div className="px-4 py-2 bg-magenta rounded-full text-sm font-medium text-white">
-                    Lost {lostBets.length}
-                  </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card className="bg-neutral-950 border-neutral-800">
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold text-light-gray">{bets.length}</div>
+                      <div className="text-xs text-medium-gray">Total Bets</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-neutral-950 border-bright-green/20">
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold text-bright-green">{wonBets.length}</div>
+                      <div className="text-xs text-medium-gray">Won</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-neutral-950 border-red-500/20">
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold text-red-500">{lostBets.length}</div>
+                      <div className="text-xs text-medium-gray">Lost</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-neutral-950 border-vibrant-purple/20">
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold text-vibrant-purple">
+                        {bets.filter(bet => !bet.finalized).length}
+                      </div>
+                      <div className="text-xs text-medium-gray">Active</div>
+                    </CardContent>
+                  </Card>
                 </div>
 
                 {/* Unredeemed Winnings */}
                 {unredeemedAmount > 0 && (
-                  <div className="bg-dark-slate border border-border rounded-lg p-4 flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-bright-green rounded-full flex items-center justify-center">
-                        <span className="text-white text-sm font-bold">H</span>
+                  <Card className="bg-bright-green/10 border-bright-green/20">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-bright-green/20 rounded-lg flex items-center justify-center">
+                            <Coins className="w-6 h-6 text-bright-green" />
+                          </div>
+                          <div>
+                            <div className="text-sm text-medium-gray">Unredeemed Winnings</div>
+                            <div className="text-2xl font-bold text-bright-green">
+                              {formatTinybarsToHbar(unredeemedAmount, 2)} HBAR
+                            </div>
+                          </div>
+                        </div>
+                        <Button className="bg-bright-green hover:bg-bright-green/90 text-black font-semibold">
+                          Redeem All
+                        </Button>
                       </div>
-                      <span className="text-light-gray font-medium">
-                        You have unredeemed {unredeemedAmount} HBAR
-                      </span>
-                    </div>
-                    <Button className="bg-bright-green hover:bg-bright-green/90 text-white">
-                      Redeem all
-                    </Button>
-                  </div>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {/* Bet Cards */}
                 <div className="space-y-4">
-                  {filteredBets.map((bet) => {
+                  {filteredBets.length === 0 ? (
+                    <Card className="bg-neutral-950 border-neutral-800">
+                      <CardContent className="p-12 text-center">
+                        <div className="flex flex-col items-center space-y-4">
+                          <div className="w-16 h-16 bg-neutral-900 rounded-full flex items-center justify-center">
+                            <Clock className="w-8 h-8 text-medium-gray" />
+                          </div>
+                          <div className="space-y-2">
+                            <h3 className="text-lg font-medium text-light-gray">No bets found</h3>
+                            <p className="text-sm text-medium-gray">
+                              {activeCategory === 'active' && 'You have no active bets at the moment'}
+                              {activeCategory === 'unredeemed' && 'All your winnings have been redeemed'}
+                              {activeCategory === 'complete' && 'You have no completed bets'}
+                              {activeCategory === 'all' && 'No bets match the current filter'}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    filteredBets.map((bet) => {
                     const status = getBetStatus(bet);
                     const remainingDays = getRemainingDaysBetweenTimestamps(
                       bet.timestamp,
@@ -190,72 +229,92 @@ export default function MyBetsPage() {
                     );
 
                     return (
-                      <Card key={bet.id} className={`${getCardBackground(bet)}`}>
+                      <Card key={bet.id} className="bg-neutral-950 border-neutral-800">
                         <CardContent className="p-6">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-3 mb-3">
-                                <div className="w-8 h-8 bg-magenta rounded-full flex items-center justify-center">
-                                  <span className="text-white text-sm font-bold">H</span>
-                                </div>
-                                <div>
-                                  <div className="text-light-gray font-medium">
-                                    {formatDateUTC(bet.timestamp)}
-                                  </div>
-                                  <div className="text-medium-gray text-sm">
-                                    {bet.priceMin} - {bet.priceMax}
-                                  </div>
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                              {getStatusIcon(bet)}
+                              <span className={`text-sm font-semibold ${
+                                status === 'won' || status === 'unredeemed' ? 'text-bright-green' : 
+                                status === 'lost' ? 'text-red-500' : 'text-vibrant-purple'
+                              }`}>
+                                {getStatusText(bet)}
+                              </span>
+                            </div>
+                            <div className="text-sm text-medium-gray">
+                              {formatDateUTC(bet.targetTimestamp)}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Left side - Bet details */}
+                            <div className="space-y-4">
+                              <div>
+                                <span className="text-xs text-medium-gray">Price Range</span>
+                                <div className="text-light-gray font-mono">
+                                  ${formatTinybarsToHbar(bet.priceMin, 4)} - ${formatTinybarsToHbar(bet.priceMax, 4)}
                                 </div>
                               </div>
 
-                              <div className="space-y-1">
-                                <div className="text-light-gray text-sm">Bet: {bet.stake} HBAR</div>
-                                {bet.payout && (
-                                  <div className="text-light-gray text-sm">
-                                    {status === 'won' || status === 'unredeemed'
-                                      ? `You won: ${bet.payout} HBAR`
-                                      : `Can win: ${bet.payout} HBAR`}
-                                  </div>
-                                )}
-                                {status === 'active' && (
-                                  <div className="text-medium-gray text-sm">
-                                    Last bet: 25 Jul, 17:57 UTC
-                                  </div>
-                                )}
+                              <div>
+                                <span className="text-xs text-medium-gray">Amount Bet</span>
+                                <div className="text-light-gray font-mono">
+                                  {formatTinybarsToHbar(bet.stake, 2)} HBAR
+                                </div>
                               </div>
+
+                              {bet.payout && (
+                                <div>
+                                  <span className="text-xs text-medium-gray">
+                                    {status === 'won' || status === 'unredeemed' ? 'Payout' : 'Potential Payout'}
+                                  </span>
+                                  <div className={`font-mono font-semibold ${
+                                    status === 'won' || status === 'unredeemed' ? 'text-bright-green' : 'text-light-gray'
+                                  }`}>
+                                    {formatTinybarsToHbar(bet.payout, 2)} HBAR
+                                  </div>
+                                </div>
+                              )}
                             </div>
 
-                            <div className="flex flex-col items-end space-y-2">
-                              <div className="flex items-center space-x-2">
-                                {getStatusIcon(bet)}
-                                <span className="text-light-gray text-sm font-medium">
-                                  {status === 'active' && remainingDays
-                                    ? `${remainingDays} days remaining`
-                                    : getStatusText(bet)}
-                                </span>
-                              </div>
+                            {/* Right side - Status and actions */}
+                            <div className="flex flex-col justify-between items-end">
+                              {status === 'active' && remainingDays && (
+                                <div className="text-right">
+                                  <div className="text-2xl font-bold text-light-gray">{remainingDays}</div>
+                                  <div className="text-xs text-medium-gray">days remaining</div>
+                                </div>
+                              )}
 
                               {status === 'won' && bet.claimed && (
-                                <div className="flex items-center space-x-1 text-bright-green text-sm">
+                                <div className="flex items-center space-x-1 text-bright-green">
                                   <CheckCircle className="w-4 h-4" />
-                                  <span>Redeemed</span>
+                                  <span className="text-sm">Redeemed</span>
                                 </div>
                               )}
 
                               {status === 'unredeemed' && (
                                 <Button
-                                  size="sm"
-                                  className="bg-bright-green hover:bg-bright-green/90 text-white"
+                                  className="bg-bright-green hover:bg-bright-green/90 text-black font-semibold"
                                 >
                                   Redeem
                                 </Button>
                               )}
                             </div>
                           </div>
+
+                          <div className="flex items-center justify-between mt-4 pt-4 border-t border-neutral-800">
+                            <span className="text-xs text-medium-gray">
+                              Placed: {formatDateUTC(bet.timestamp)}
+                            </span>
+                            <span className="text-xs text-medium-gray">
+                              Bet ID: {bet.id.slice(0, 8)}...
+                            </span>
+                          </div>
                         </CardContent>
                       </Card>
                     );
-                  })}
+                  }))}
                 </div>
               </div>
             )}
