@@ -414,7 +414,7 @@ export default function MyBetsPage() {
                                       {bet.finalized 
                                         ? formatTinybarsToHbar(bet.payout, 2)
                                         : formatTinybarsToHbar(
-                                            Math.floor((Number(bet.stake) * Number(bet.qualityBps)) / 10000), 
+                                            Math.floor(Number(bet.stake) + (Number(bet.stake) * (bet.qualityBps || 0)) / 10000), 
                                             2
                                           )
                                       } HBAR

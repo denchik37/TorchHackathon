@@ -19,4 +19,5 @@ export interface Bet {
   finalized: boolean;
   won: boolean;
   weight: number;
+  qualityBps?: number;
 }
