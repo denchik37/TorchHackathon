@@ -94,7 +94,7 @@ export default function MyBetsPage() {
   const { writeContract } = useWriteContract();
   const { watch } = useWatchTransactionReceipt();
 
-  const { data, refetch } = useQuery<Data>(GET_USER, {
+  const { data, loading, refetch } = useQuery<Data>(GET_USER, {
     variables: { id: evmAddress },
   });
 
@@ -168,7 +168,7 @@ export default function MyBetsPage() {
 
       // Process each unredeemed bet that is won
       const unredeemedWonBets = bets.filter((bet) => !bet.claimed && bet.finalized && bet.won);
-      
+
       let processedCount = 0;
       let errorCount = 0;
 
@@ -184,8 +184,10 @@ export default function MyBetsPage() {
           watch(txId as string, {
             onSuccess: (transaction) => {
               processedCount++;
-              console.log(`Successfully redeemed bet ${bet.id} (${processedCount}/${unredeemedWonBets.length})`);
-              
+              console.log(
+                `Successfully redeemed bet ${bet.id} (${processedCount}/${unredeemedWonBets.length})`
+              );
+
               // Check if all bets have been processed
               if (processedCount + errorCount === unredeemedWonBets.length) {
                 console.log('Finished redeeming all bets');
@@ -197,7 +199,7 @@ export default function MyBetsPage() {
             onError: (receipt, error) => {
               errorCount++;
               console.error(`Failed to redeem bet ${bet.id}:`, error);
-              
+
               // Check if all bets have been processed
               if (processedCount + errorCount === unredeemedWonBets.length) {
                 console.log('Finished redeeming all bets with some errors');
@@ -210,14 +212,14 @@ export default function MyBetsPage() {
         } catch (error) {
           errorCount++;
           console.error(`Failed to submit redeem for bet ${bet.id}:`, error);
-          
+
           if (processedCount + errorCount === unredeemedWonBets.length) {
             refetch();
             setRedeemingAll(false);
           }
         }
       }
-      
+
       // If there are no bets to redeem
       if (unredeemedWonBets.length === 0) {
         console.log('No bets to redeem');
@@ -237,7 +239,7 @@ export default function MyBetsPage() {
           <NoWalletConnectedContainer />
         ) : (
           <>
-            {!bets.length && <NoBetsContainer />}
+            {!bets.length && !loading && <NoBetsContainer />}
 
             {bets.length > 0 && (
               <div className="max-w-4xl mx-auto space-y-6">
@@ -411,13 +413,16 @@ export default function MyBetsPage() {
                                           : 'text-light-gray'
                                       }`}
                                     >
-                                      {bet.finalized 
+                                      {bet.finalized
                                         ? formatTinybarsToHbar(bet.payout, 2)
                                         : formatTinybarsToHbar(
-                                            Math.floor(Number(bet.stake) + (Number(bet.stake) * (bet.qualityBps || 0)) / 10000), 
+                                            Math.floor(
+                                              Number(bet.stake) +
+                                                (Number(bet.stake) * (bet.qualityBps || 0)) / 10000
+                                            ),
                                             2
-                                          )
-                                      } HBAR
+                                          )}{' '}
+                                      HBAR
                                     </div>
                                   </div>
                                 )}
