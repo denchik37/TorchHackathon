@@ -603,13 +603,6 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(({
       const timeVal = currentX.invert(pointerX);
       const priceVal = currentY.invert(pointerY);
 
-      const radius = 50;
-      const nearbyPoints = dataset.filter((d) => {
-        const dx = currentX(d.time) - pointerX;
-        const dy = currentY(d.price) - pointerY;
-        return dx * dx + dy * dy < radius * radius;
-      });
-
       const timeFormat = d3.timeFormat('%b %d, %Y at %I:%M %p');
       let metricsHtml = `<div class="font-semibold text-neutral-200 mb-3">Live Analysis</div>`;
       metricsHtml += `<div class="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-xs">
@@ -618,24 +611,7 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(({
         <span class="font-medium text-neutral-400">Cursor Price:</span> 
         <span class="text-right font-mono">$${priceVal.toFixed(4)}</span>
       </div>`;
-
-      if (nearbyPoints.length > 0) {
-        const avgPrice = d3.mean(nearbyPoints, (d) => d.price);
-        const avgWeight = d3.mean(nearbyPoints, (d) => d.originalWeight);
-        const totalWeight = d3.sum(nearbyPoints, (d) => d.originalWeight);
-        const priceStd = d3.deviation(nearbyPoints, (d) => d.price);
-
-        metricsHtml += `<div class="border-t border-neutral-600 my-3"></div>
-         <div class="font-semibold text-neutral-200 mb-2">Nearby Bets (${nearbyPoints.length})</div>
-         <div class="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-xs">
-            <span class="font-medium text-neutral-400">Avg Price:</span> 
-            <span class="text-right font-mono">$${avgPrice?.toFixed(4) || '0.0000'}</span>
-            <span class="font-medium text-neutral-400">Total Weight:</span> 
-            <span class="text-right font-mono">${totalWeight?.toLocaleString() || '0'}</span>
-            <span class="font-medium text-neutral-400">Price Std Dev:</span> 
-            <span class="text-right font-mono">$${priceStd?.toFixed(4) || '0.0000'}</span>
-         </div>`;
-      }
+      
       metricsPanel.html(metricsHtml);
     }
   }, [data, enableZoom, onZoomChange, initialTransform, zoomTransform, showControls]);
