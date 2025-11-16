@@ -183,18 +183,6 @@ export function WalletSelector() {
           )}
         </Button>
 
-        {/* Account Details Modal */}
-        <AccountDetailsModal>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex items-center space-x-2 bg-neutral-800 border-neutral-700 text-light-gray hover:bg-neutral-700"
-          >
-            <Info className="w-3 h-3" />
-            <span className="text-xs">Details</span>
-          </Button>
-        </AccountDetailsModal>
-
         {/* Account Info Button */}
         {accountId && (
           <Button
