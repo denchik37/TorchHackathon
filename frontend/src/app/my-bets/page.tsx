@@ -38,6 +38,7 @@ const GET_USER = gql`
         stake
         priceMin
         priceMax
+        qualityBps
         timestamp
         targetTimestamp
       }
@@ -396,7 +397,7 @@ export default function MyBetsPage() {
                                   </div>
                                 </div>
 
-                                {bet.payout && (
+                                {(bet.payout || !bet.finalized) && (
                                   <div>
                                     <span className="text-xs text-medium-gray">
                                       {status === 'won' || status === 'unredeemed'
@@ -410,7 +411,13 @@ export default function MyBetsPage() {
                                           : 'text-light-gray'
                                       }`}
                                     >
-                                      {formatTinybarsToHbar(bet.payout, 2)} HBAR
+                                      {bet.finalized 
+                                        ? formatTinybarsToHbar(bet.payout, 2)
+                                        : formatTinybarsToHbar(
+                                            Math.floor((Number(bet.stake) * Number(bet.qualityBps)) / 10000), 
+                                            2
+                                          )
+                                      } HBAR
                                     </div>
                                   </div>
                                 )}
