@@ -14,7 +14,7 @@ import { BetHistory } from '@/components/bet-history';
 import { BetPlacingModal } from '@/components/bet-placing-modal';
 import { BetPlacedModal } from '@/components/bet-placed-modal';
 import { useHbarPrice } from '@/hooks/useHbarPrice';
-import { useTorchPredictionMarket } from '@/hooks/useTorchPredictionMarket';
+import { useContractMultipliers } from '@/hooks/useContractMultipliers';
 import { HbarPriceDisplay } from '@/components/hbar-price-display';
 import { Bet } from '@/lib/types';
 import { ContractId } from '@hashgraph/sdk';
@@ -87,12 +87,11 @@ export function PredictionCard({ className }: PredictionCardProps) {
 
   const { price: currentPrice, isLoading: priceLoading, error: priceError } = useHbarPrice();
 
-  // Use the contract hook
+  // Use the contract multipliers hook
   const {
-    loading: contractLoading,
-
-    clearError,
-  } = useTorchPredictionMarket();
+    getSharpnessMultiplier,
+    getTimeMultiplier,
+  } = useContractMultipliers();
 
   const { data, loading, error } = useQuery(GET_BETS_BY_TIMESTAMP, {
     variables: { startTimestamp: startUnix, endTimestamp: endUnix },
@@ -123,7 +122,6 @@ export function PredictionCard({ className }: PredictionCardProps) {
 
     setIsPlacingBet(true);
     setBetError(null);
-    clearError();
 
     try {
       const decimals = 8;
@@ -156,7 +154,6 @@ export function PredictionCard({ className }: PredictionCardProps) {
           return transaction;
         },
         onError: (receipt, error) => {
-          console.error('Transaction failed or timed out', error);
           setIsPlacingBet(false);
           setBetError(`Transaction failed or timed out: ${error}`);
           return receipt;
@@ -167,7 +164,6 @@ export function PredictionCard({ className }: PredictionCardProps) {
       setIsPlacingBet(false);
 
       setBetError(errorMessage);
-      console.error('Bet placement error:', err);
     }
   };
 
@@ -188,13 +184,12 @@ export function PredictionCard({ className }: PredictionCardProps) {
     setDepositAmount('');
   };
 
-  const calculateMultipliers = () => {
-    // Mock calculation for bet quality multipliers
-    const sharpness = 0.5; // Based on range width
-    const leadTime = 1.5; // Based on time to resolution
-    const betQuality = sharpness * leadTime;
-    return { sharpness, leadTime, betQuality };
-  };
+  const [multipliers, setMultipliers] = useState({
+    sharpness: 0,
+    leadTime: 0,
+    betQuality: 0,
+    isLoading: true
+  });
 
   // Date manipulation functions
   const incrementDate = () => {
@@ -258,13 +253,13 @@ export function PredictionCard({ className }: PredictionCardProps) {
     return date.getDate().toString();
   };
 
-  const { sharpness, leadTime, betQuality } = calculateMultipliers();
+  const { sharpness, leadTime, betQuality, isLoading: multipliersLoading } = multipliers;
 
   // Validation
   const hasValidAmount =
     depositAmount && parseFloat(depositAmount) > 0 && parseFloat(depositAmount) <= balance;
   const isWalletConnected = isConnected;
-  const canPlaceBet = hasValidAmount && isWalletConnected && !contractLoading;
+  const canPlaceBet = hasValidAmount && isWalletConnected && !isPlacingBet;
 
   useEffect(() => {
     if (data?.bets?.length) {
@@ -276,6 +271,71 @@ export function PredictionCard({ className }: PredictionCardProps) {
       setSelectedRange({ min: minPrice, max: maxPrice });
     }
   }, [data]);
+
+  // Calculate real multipliers when range or time changes
+  useEffect(() => {
+    const calculateRealMultipliers = async () => {
+      if (!getSharpnessMultiplier || !getTimeMultiplier) {
+        setMultipliers({
+          sharpness: 1.5,
+          leadTime: 1.2,
+          betQuality: 1.8,
+          isLoading: false
+        });
+        return;
+      }
+      
+      setMultipliers(prev => ({ ...prev, isLoading: true }));
+      
+      try {
+        // Convert price range to basis points (1-10000)
+        // selectedRange is in USD (e.g., 0.25-0.35), convert to BPS
+        const priceMinBps = Math.floor(selectedRange.min * 10000).toString();
+        const priceMaxBps = Math.floor(selectedRange.max * 10000).toString();
+        
+        // Add timeout to prevent infinite loading
+        const timeout = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Contract call timeout')), 10000)
+        );
+        
+        // Get multipliers from contract with timeout
+        const [sharpnessResult, timeResult] = await Promise.race([
+          Promise.all([
+            getSharpnessMultiplier(priceMinBps, priceMaxBps),
+            getTimeMultiplier(startUnix.toString())
+          ]),
+          timeout
+        ]) as [string | null, string | null];
+        
+        if (sharpnessResult && timeResult) {
+          // Convert from basis points to multiplier (divide by 10000)
+          const sharpness = parseFloat(sharpnessResult) / 10000;
+          const leadTime = parseFloat(timeResult) / 10000;
+          const betQuality = sharpness * leadTime;
+          
+          setMultipliers({
+            sharpness,
+            leadTime,
+            betQuality,
+            isLoading: false
+          });
+        } else {
+          throw new Error('Contract returned null values');
+        }
+      } catch (error) {
+        setMultipliers({
+          sharpness: 1.5,
+          leadTime: 1.2, 
+          betQuality: 1.8,
+          isLoading: false
+        });
+      }
+    };
+    
+    // Add delay to prevent too frequent calls
+    const timeoutId = setTimeout(calculateRealMultipliers, 500);
+    return () => clearTimeout(timeoutId);
+  }, [selectedRange, startUnix]);
 
   return (
     <Card className={className}>
@@ -396,15 +456,21 @@ export function PredictionCard({ className }: PredictionCardProps) {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-medium-gray">Sharpness:</span>
-                    <span className="text-bright-green">{sharpness}x (10..20%)</span>
+                    <span className={`text-bright-green ${multipliersLoading ? 'opacity-50' : ''}`}>
+                      {multipliersLoading ? '...' : `${sharpness.toFixed(2)}x`}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-medium-gray">Lead time:</span>
-                    <span className="text-bright-green">{leadTime}x (2..4 days)</span>
+                    <span className={`text-bright-green ${multipliersLoading ? 'opacity-50' : ''}`}>
+                      {multipliersLoading ? '...' : `${leadTime.toFixed(2)}x`}
+                    </span>
                   </div>
                   <div className="flex justify-between font-medium">
                     <span className="text-medium-gray">Bet quality:</span>
-                    <span className="text-bright-green">{betQuality}x (weight)</span>
+                    <span className={`text-bright-green ${multipliersLoading ? 'opacity-50' : ''}`}>
+                      {multipliersLoading ? '...' : `${betQuality.toFixed(2)}x (weight)`}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -488,7 +554,7 @@ export function PredictionCard({ className }: PredictionCardProps) {
               onClick={handlePlaceBet}
               disabled={!canPlaceBet}
             >
-              {contractLoading
+              {isPlacingBet
                 ? 'Processing...'
                 : !isWalletConnected
                   ? 'Connect Wallet'
