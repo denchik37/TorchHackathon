@@ -14,7 +14,7 @@ import { BetHistory } from '@/components/bet-history';
 import { BetPlacingModal } from '@/components/bet-placing-modal';
 import { BetPlacedModal } from '@/components/bet-placed-modal';
 import { useHbarPrice } from '@/hooks/useHbarPrice';
-import { useContractMultipliers } from '@/hooks/useContractMultipliers';
+import { useBetSimulation } from '@/hooks/useBetSimulation';
 import { HbarPriceDisplay } from '@/components/hbar-price-display';
 import { Bet } from '@/lib/types';
 import { ContractId } from '@hashgraph/sdk';
@@ -85,24 +85,39 @@ export function PredictionCard({ className }: PredictionCardProps) {
   const [transactionId, setTransactionId] = useState<string | null>(null);
 
   const { startUnix, endUnix } = getTimestampRange(resolutionDate, resolutionTime);
-  
+
   // Validate minimum lead period
   const validateLeadPeriod = () => {
     const selectedTime = new Date(
-      Date.UTC(resolutionDate.getUTCFullYear(), resolutionDate.getUTCMonth(), resolutionDate.getUTCDate(), 
-      parseInt(resolutionTime.split(':')[0]), parseInt(resolutionTime.split(':')[1]), 0)
+      Date.UTC(
+        resolutionDate.getUTCFullYear(),
+        resolutionDate.getUTCMonth(),
+        resolutionDate.getUTCDate(),
+        parseInt(resolutionTime.split(':')[0]),
+        parseInt(resolutionTime.split(':')[1]),
+        0
+      )
     );
     const minimumTime = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day from now
     return selectedTime >= minimumTime;
   };
-  
+
   const hasValidLeadPeriod = useMemo(() => validateLeadPeriod(), [resolutionDate, resolutionTime]);
-  const leadPeriodHours = useMemo(() => Math.max(0, (startUnix * 1000 - Date.now()) / (60 * 60 * 1000)), [startUnix]);
+  const leadPeriodHours = useMemo(
+    () => Math.max(0, (startUnix * 1000 - Date.now()) / (60 * 60 * 1000)),
+    [startUnix]
+  );
 
-  const { price: currentPrice, isLoading: priceLoading, error: priceError, isStale, retryFetch } = useHbarPrice();
+  const {
+    price: currentPrice,
+    isLoading: priceLoading,
+    error: priceError,
+    isStale,
+    retryFetch,
+  } = useHbarPrice();
 
-  // Use the contract multipliers hook
-  const { getSharpnessMultiplier, getTimeMultiplier } = useContractMultipliers();
+  // Use bet simulation hook
+  const { simulatePlaceBet } = useBetSimulation();
 
   const { data, loading, error } = useQuery(GET_BETS_BY_TIMESTAMP, {
     variables: { startTimestamp: startUnix, endTimestamp: endUnix },
@@ -221,6 +236,13 @@ export function PredictionCard({ className }: PredictionCardProps) {
     isLoading: true,
   });
 
+  const [simulationDetails, setSimulationDetails] = useState({
+    fee: '0',
+    stakeNet: '0',
+    isValid: true,
+    errorMessage: '',
+  });
+
   // Date manipulation functions
   const incrementDate = () => {
     const newDate = new Date(resolutionDate);
@@ -284,6 +306,29 @@ export function PredictionCard({ className }: PredictionCardProps) {
     return date.getDate().toString();
   };
 
+  const getProtocolFeeDisplay = () => {
+    if (multipliersLoading) {
+      return '...';
+    }
+
+    if (depositAmount && parseFloat(depositAmount) > 0 && simulationDetails.isValid) {
+      const feeAmount = parseFloat(ethers.utils.formatEther(simulationDetails.fee));
+      const feePercentage = ((feeAmount / parseFloat(depositAmount)) * 100).toFixed(2);
+      return (
+        <>
+          {feePercentage}%<span className="text-medium-gray">({feeAmount.toFixed(4)} HBAR)</span>
+        </>
+      );
+    }
+
+    return (
+      <>
+        0.5%
+        <span className="text-medium-gray">(estimated)</span>
+      </>
+    );
+  };
+
   const { sharpness, leadTime, betQuality, isLoading: multipliersLoading } = multipliers;
 
   // Validation
@@ -311,10 +356,10 @@ export function PredictionCard({ className }: PredictionCardProps) {
     }
   }, [data]);
 
-  // Calculate real multipliers when range or time changes
+  // Calculate real multipliers using bet simulation
   useEffect(() => {
     const calculateRealMultipliers = async () => {
-      if (!getSharpnessMultiplier || !getTimeMultiplier) {
+      if (!simulatePlaceBet) {
         setMultipliers({
           sharpness: 1.5,
           leadTime: 1.2,
@@ -327,30 +372,19 @@ export function PredictionCard({ className }: PredictionCardProps) {
       setMultipliers((prev) => ({ ...prev, isLoading: true }));
 
       try {
-        // Convert price range to basis points (1-10000)
-        // selectedRange is in USD (e.g., 0.25-0.35), convert to BPS
-        const priceMinBps = Math.floor(selectedRange.min * 10000).toString();
-        const priceMaxBps = Math.floor(selectedRange.max * 10000).toString();
-
-        // Add timeout to prevent infinite loading
-        const timeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Contract call timeout')), 10000)
+        // Use simulatePlaceBet to get all metrics in one call
+        const simulation = await simulatePlaceBet(
+          startUnix.toString(),
+          selectedRange.min.toString(),
+          selectedRange.max.toString(),
+          depositAmount
         );
 
-        // Get multipliers from contract with timeout
-        const [sharpnessResult, timeResult] = (await Promise.race([
-          Promise.all([
-            getSharpnessMultiplier(priceMinBps, priceMaxBps),
-            getTimeMultiplier(startUnix.toString()),
-          ]),
-          timeout,
-        ])) as [string | null, string | null];
-
-        if (sharpnessResult && timeResult) {
+        if (simulation && simulation.isValid) {
           // Convert from basis points to multiplier (divide by 10000)
-          const sharpness = parseFloat(sharpnessResult) / 10000;
-          const leadTime = parseFloat(timeResult) / 10000;
-          const betQuality = sharpness * leadTime;
+          const sharpness = parseFloat(simulation.sharpnessBps) / 10000;
+          const leadTime = parseFloat(simulation.timeBps) / 10000;
+          const betQuality = parseFloat(simulation.qualityBps) / 10000;
 
           setMultipliers({
             sharpness,
@@ -358,10 +392,19 @@ export function PredictionCard({ className }: PredictionCardProps) {
             betQuality,
             isLoading: false,
           });
+
+          // Store simulation details for fee display
+          setSimulationDetails({
+            fee: simulation.fee,
+            stakeNet: simulation.stakeNet,
+            isValid: simulation.isValid,
+            errorMessage: simulation.errorMessage,
+          });
         } else {
-          throw new Error('Contract returned null values');
+          throw new Error(simulation?.errorMessage || 'Simulation returned invalid result');
         }
       } catch (error) {
+        console.warn('Failed to get bet quality from contract, using fallback:', error);
         setMultipliers({
           sharpness: 1.5,
           leadTime: 1.2,
@@ -371,10 +414,8 @@ export function PredictionCard({ className }: PredictionCardProps) {
       }
     };
 
-    // Add delay to prevent too frequent calls
-    const timeoutId = setTimeout(calculateRealMultipliers, 500);
-    return () => clearTimeout(timeoutId);
-  }, [selectedRange, startUnix]);
+    calculateRealMultipliers();
+  }, [selectedRange, startUnix, depositAmount]);
 
   return (
     <Card className={className}>
@@ -393,14 +434,14 @@ export function PredictionCard({ className }: PredictionCardProps) {
 
             <span className="flex gap-1  text-xs">
               <b>Current price:</b>
-              <HbarPriceDisplay 
+              <HbarPriceDisplay
                 price={currentPrice}
                 isLoading={priceLoading}
                 error={priceError}
                 isStale={isStale}
                 retryFetch={retryFetch}
-                size="sm" 
-                showIcon={false} 
+                size="sm"
+                showIcon={false}
               />
             </span>
           </div>
@@ -550,7 +591,6 @@ export function PredictionCard({ className }: PredictionCardProps) {
                   />
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
                     {!hasValidAmount && <AlertTriangle className="w-4 h-4 text-magenta" />}
-                    <span className="text-sm font-medium text-magenta">H</span>
                     <span className="text-sm text-medium-gray">HBAR</span>
                   </div>
                 </div>
@@ -569,12 +609,7 @@ export function PredictionCard({ className }: PredictionCardProps) {
               {/* Protocol Fee */}
               <div className="flex justify-between py-3 px-4 border border-white/5 rounded-lg text-sm">
                 <span className="text-medium-gray">Protocol fee:</span>
-                <span className="text-white">
-                  0.5%
-                  <span className="text-medium-gray">
-                    ({(parseFloat(depositAmount) * 0.005).toFixed(4)} HBAR)
-                  </span>
-                </span>
+                <span className="text-white">{getProtocolFeeDisplay()}</span>
               </div>
             </div>
 
