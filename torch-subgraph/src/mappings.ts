@@ -4,6 +4,7 @@ import {
   BetFinalized,
   BetClaimed,
   FeeCollected,
+  AggregationCompleted,
   TorchPredictionMarket
 } from "../generated/TorchPredictionMarket/TorchPredictionMarket"
 import { User, UserStats, Bet, Fee } from "../generated/schema"
