@@ -77,7 +77,7 @@ export function PriceRangeSelector({
   const totalVolumeHbar = useMemo(() => {
     if (betsLoading || !betsData?.bets) return 0;
 
-    console.log('Bets data:', betsData);
+    
     return betsData.bets.reduce((sum: number, bet: any) => {
       return sum + parseFloat(formatTinybarsToHbar(bet.stake));
     }, 0);
@@ -119,8 +119,8 @@ export function PriceRangeSelector({
 
       // Find bets that overlap with this price bucket
       const betsInBucket = betsData.bets.filter((bet: any) => {
-        const betMinPrice = parseFloat(bet.priceMin) / 10000; // Convert from basis points
-        const betMaxPrice = parseFloat(bet.priceMax) / 10000;
+        const betMinPrice = parseFloat(formatTinybarsToHbar(bet.priceMin)); // Use same conversion as other components
+        const betMaxPrice = parseFloat(formatTinybarsToHbar(bet.priceMax));
 
         // Check if bet price range overlaps with bucket
         return betMinPrice <= bucketMax && betMaxPrice >= bucketMin;
@@ -130,6 +130,7 @@ export function PriceRangeSelector({
       const totalStakeInBucket = betsInBucket.reduce((sum: number, bet: any) => {
         return sum + parseFloat(formatTinybarsToHbar(bet.stake));
       }, 0);
+
 
       data.push({
         min: bucketMin,
@@ -234,8 +235,7 @@ export function PriceRangeSelector({
                 bucket.isSelected && 'bg-vibrant-purple'
               )}
               style={{
-                height: `${(bucket.amount / maxBetAmount) * 100}%`,
-                minHeight: '4px',
+                height: `${bucket.amount > 0 ? Math.max(8, (bucket.amount / maxBetAmount) * 100) : 0}%`,
               }}
             />
           ))}
