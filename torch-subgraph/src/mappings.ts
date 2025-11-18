@@ -7,7 +7,7 @@ import {
   AggregationCompleted,
   TorchPredictionMarket
 } from "../generated/TorchPredictionMarket/TorchPredictionMarket"
-import { User, UserStats, Bet, Fee, Bucket } from "../generated/schema"
+import { User, UserStats, Bet, Bucket, Fee } from "../generated/schema"
 
 // Helper to load or create immutable User + mutable UserStats
 function getOrCreateUser(address: Address): UserStats {
@@ -15,52 +15,53 @@ function getOrCreateUser(address: Address): UserStats {
 
   // Immutable user
   let user = User.load(userId)
-  if (!user) {
+  if (user == null) {
     log.info("[User] Creating new User entity: {}", [userId])
     user = new User(userId)
     user.save()
+  } else {
+    log.info("[User] Found existing User entity: {}", [userId])
   }
 
   // Mutable stats
   let stats = UserStats.load(userId)
-  if (!stats) {
+  if (stats == null) {
     log.info("[UserStats] Creating new UserStats for: {}", [userId])
     stats = new UserStats(userId)
     stats.totalBets = 0
     stats.totalWon = 0
     stats.totalStaked = BigInt.zero()
     stats.totalPayout = BigInt.zero()
-    stats.save() // ensure stats are persisted immediately
+  } else {
+    log.info("[UserStats] Loaded existing UserStats for: {}", [userId])
   }
 
   return stats
 }
 
-/* ---------------- BET PLACED ---------------- */
+// BetPlaced
 export function handleBetPlaced(event: BetPlaced): void {
-  log.info("[BetPlaced] Handling bet {} from user {}", [
-    event.params.betId.toString(),
-    event.params.bettor.toHexString()
+  log.info("[BetPlaced] Handling bet from user {} with betId {}", [
+    event.params.bettor.toHexString(),
+    event.params.betId.toString()
   ])
 
   let stats = getOrCreateUser(event.params.bettor)
 
   // Bind contract to call getBet()
   let contract = TorchPredictionMarket.bind(event.address)
-  let result = contract.try_getBet(event.params.betId)
-  if (result.reverted) {
+  let betDataResult = contract.try_getBet(event.params.betId)
+  if (betDataResult.reverted) {
     log.warning("[BetPlaced] Contract call getBet({}) reverted", [event.params.betId.toString()])
     return
   }
-  let betData = result.value
+  let betData = betDataResult.value
 
   let betId = event.params.betId.toString()
   let bet = new Bet(betId)
 
   bet.user = event.params.bettor.toHexString()
   bet.bucket = event.params.bucket.toI32()
-  bet.bucketRef = event.params.bucket.toString() // link bet to bucket
-
   bet.stake = betData.stake
   bet.priceMin = betData.priceMin
   bet.priceMax = betData.priceMax
@@ -71,50 +72,44 @@ export function handleBetPlaced(event: BetPlaced): void {
   bet.claimed = betData.claimed
   bet.actualPrice = betData.actualPrice
   bet.won = betData.won
-  bet.payout = BigInt.zero() // payout is updated later
+  bet.payout = BigInt.zero()  // payout is likely zero until finalized/claimed
 
   bet.blockNumber = event.block.number
   bet.timestamp = event.block.timestamp
   bet.transactionHash = event.transaction.hash
 
   bet.save()
+
   log.info("[BetPlaced] Saved Bet entity {} for user {}", [
     betId,
     event.params.bettor.toHexString()
   ])
 
-  // Bucket logic
-  let bucketId = event.params.bucket.toString()
-  let bucket = Bucket.load(bucketId)
-  if (!bucket) {
-    log.info("[Bucket] Creating new Bucket {}", [bucketId])
-    bucket = new Bucket(bucketId)
-    bucket.aggregationComplete = false
-    bucket.totalBets = 0
-  }
-  bucket.totalBets += 1
-  bucket.save()
-  log.info("[Bucket] Updated Bucket {} | totalBets={}", [
-    bucketId,
-    bucket.totalBets.toString()
-  ])
-
-  // Update user stats
+  // Update stats
   stats.totalBets += 1
   stats.totalStaked = stats.totalStaked.plus(bet.stake)
   stats.save()
-  log.info("[UserStats] Updated stats for {} | totalBets={} totalStaked={}", [
+
+  log.info("[BetPlaced] Updated UserStats for {} | totalBets={} totalStaked={}", [
     event.params.bettor.toHexString(),
     stats.totalBets.toString(),
     stats.totalStaked.toString()
   ])
 }
 
-/* ---------------- BET FINALIZED ---------------- */
+// BetFinalized (no changes needed)
 export function handleBetFinalized(event: BetFinalized): void {
-  let bet = Bet.load(event.params.betId.toString())
-  if (!bet) {
-    log.warning("[BetFinalized] Bet {} not found", [event.params.betId.toString()])
+  log.info("[BetFinalized] betId={} actualPrice={} won={} payout={}", [
+    event.params.betId.toString(),
+    event.params.actualPrice.toString(),
+    event.params.won ? "true" : "false",
+    event.params.payout.toString()
+  ])
+
+  let betId = event.params.betId.toString()
+  let bet = Bet.load(betId)
+  if (bet == null) {
+    log.warning("[BetFinalized] Bet {} not found", [betId])
     return
   }
 
@@ -123,7 +118,8 @@ export function handleBetFinalized(event: BetFinalized): void {
   bet.won = event.params.won
   bet.payout = event.params.payout
   bet.save()
-  log.info("[BetFinalized] Updated Bet {} as finalized", [bet.id])
+
+  log.info("[BetFinalized] Updated Bet {} as finalized", [betId])
 
   if (event.params.won) {
     let stats = UserStats.load(bet.user)
@@ -131,15 +127,29 @@ export function handleBetFinalized(event: BetFinalized): void {
       stats.totalWon += 1
       stats.totalPayout = stats.totalPayout.plus(event.params.payout)
       stats.save()
+
+      log.info("[BetFinalized] User {} won | totalWon={} totalPayout={}", [
+        bet.user,
+        stats.totalWon.toString(),
+        stats.totalPayout.toString()
+      ])
+    } else {
+      log.warning("[BetFinalized] No UserStats found for winner {}", [bet.user])
     }
   }
 }
 
-/* ---------------- BET CLAIMED ---------------- */
+// BetClaimed
 export function handleBetClaimed(event: BetClaimed): void {
-  let bet = Bet.load(event.params.betId.toString())
-  if (!bet) {
-    log.warning("[BetClaimed] Bet {} not found", [event.params.betId.toString()])
+  log.info("[BetClaimed] betId={} claimed by {}", [
+    event.params.betId.toString(),
+    event.params.bettor.toHexString()
+  ])
+
+  let betId = event.params.betId.toString()
+  let bet = Bet.load(betId)
+  if (bet == null) {
+    log.warning("[BetClaimed] Bet {} not found", [betId])
     return
   }
 
@@ -147,35 +157,54 @@ export function handleBetClaimed(event: BetClaimed): void {
   bet.payout = event.params.payout
   bet.save()
 
+  // Update user stats payout
   let stats = UserStats.load(event.params.bettor.toHexString())
-  if (stats) {
-    stats.totalPayout = stats.totalPayout.plus(event.params.payout)
-    stats.save()
+  if (stats == null) {
+    log.warning("[BetClaimed] No UserStats found for user {}", [event.params.bettor.toHexString()])
+    return
   }
+  stats.totalPayout = stats.totalPayout.plus(event.params.payout)
+  stats.save()
+
+  log.info("[BetClaimed] Bet {} marked as claimed, updated payout for user {}", [
+    betId,
+    event.params.bettor.toHexString()
+  ])
 }
 
-/* ---------------- FEE COLLECTED ---------------- */
+// FeeCollected
 export function handleFeeCollected(event: FeeCollected): void {
-  let id = event.transaction.hash.toHex() + "-" + event.logIndex.toString()
-  let fee = new Fee(id)
+  let feeId = event.transaction.hash
+    .toHex()
+    .concat("-")
+    .concat(event.logIndex.toString())
+
+  log.info("[FeeCollected] id={} amount={}", [
+    feeId,
+    event.params.amount.toString()
+  ])
+
+  let fee = new Fee(feeId)
   fee.amount = event.params.amount
   fee.blockNumber = event.block.number
   fee.timestamp = event.block.timestamp
   fee.transactionHash = event.transaction.hash
   fee.save()
+
+  log.info("[FeeCollected] Saved Fee entity {}", [feeId])
 }
+
 
 /* ---------------- BUCKET AGGREGATION COMPLETED ---------------- */
 export function handleAggregationCompleted(event: AggregationCompleted): void {
-  let bucketId = event.params.bucket.toString()
-  let bucket = Bucket.load(bucketId)
+  let bucket = Bucket.load(event.params.bucket.toString())
+
   if (!bucket) {
-    log.info("[Bucket] Creating late Bucket {}", [bucketId])
-    bucket = new Bucket(bucketId)
-    bucket.totalBets = 0
+    bucket = new Bucket(event.params.bucket.toString())
+    bucket.totalBets = 0 // created late
   }
 
   bucket.aggregationComplete = true
   bucket.save()
-  log.info("[Bucket] Aggregation completed for Bucket {}", [bucketId])
 }
+
