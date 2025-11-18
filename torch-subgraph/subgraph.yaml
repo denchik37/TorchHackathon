@@ -19,6 +19,7 @@ dataSources:
         - User
         - Bet
         - Fee
+        - Bucket
       abis:
         - name: TorchPredictionMarket
           file: ./abis/TorchPredictionMarket.json
