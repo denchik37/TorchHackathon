@@ -37,6 +37,19 @@ export function useHbarPrice() {
         type: 'function',
       },
       {
+        inputs: [{ name: '_roundId', type: 'uint80' }],
+        name: 'getRoundData',
+        outputs: [
+          { name: 'roundId', type: 'uint80' },
+          { name: 'answer', type: 'int256' },
+          { name: 'startedAt', type: 'uint256' },
+          { name: 'updatedAt', type: 'uint256' },
+          { name: 'answeredInRound', type: 'uint80' },
+        ],
+        stateMutability: 'view',
+        type: 'function',
+      },
+      {
         inputs: [],
         name: 'decimals',
         outputs: [{ name: '', type: 'uint8' }],
@@ -48,21 +61,56 @@ export function useHbarPrice() {
     const provider = new ethers.providers.JsonRpcProvider('https://mainnet.hashio.io/api');
     const contract = new ethers.Contract(HBAR_USD_FEED_ADDRESS, ABI, provider);
 
-    const [, answer] = await contract.latestRoundData();
+    const [latestRoundId, latestAnswer, , latestUpdatedAt] = await contract.latestRoundData();
     const decimals = await contract.decimals();
 
-    return parseFloat(ethers.utils.formatUnits(answer, decimals));
+    const currentPrice = parseFloat(ethers.utils.formatUnits(latestAnswer, decimals));
+    let priceChangePercentage = 0;
+
+    // Try to get historical data using known valid round ID structure
+    try {
+      // Try a few rounds back to find historical data
+      const roundsToTry = [5, 10, 20, 50];
+
+      for (const roundsBack of roundsToTry) {
+        try {
+          const historicalRoundId = latestRoundId.sub(roundsBack);
+          const [, historicalAnswer, , historicalUpdatedAt] =
+            await contract.getRoundData(historicalRoundId);
+
+          if (historicalUpdatedAt.toNumber() > 0) {
+            const timeDiff = latestUpdatedAt.toNumber() - historicalUpdatedAt.toNumber();
+
+            // If we found data that's at least 1 hour old, use it
+            if (timeDiff >= 3600) {
+              const historicalPrice = parseFloat(
+                ethers.utils.formatUnits(historicalAnswer, decimals)
+              );
+              priceChangePercentage = ((currentPrice - historicalPrice) / historicalPrice) * 100;
+              break;
+            }
+          }
+        } catch (error) {
+          // This round doesn't exist, try next
+          continue;
+        }
+      }
+    } catch (error) {
+      console.warn('Could not fetch historical price data:', error);
+    }
+
+    return { price: currentPrice, priceChangePercentage };
   }, []);
 
   const fetchHbarPriceData = useCallback(async () => {
     try {
       setPriceData((prev) => ({ ...prev, isLoading: true, error: null }));
 
-      const chainlinkPrice = await fetchChainlinkPrice();
+      const { price, priceChangePercentage } = await fetchChainlinkPrice();
 
       setPriceData({
-        price: chainlinkPrice,
-        priceChangePercentage: 0,
+        price,
+        priceChangePercentage,
         lastUpdated: new Date(),
         isLoading: false,
         error: null,

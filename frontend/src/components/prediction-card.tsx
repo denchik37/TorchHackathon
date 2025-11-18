@@ -85,13 +85,10 @@ export function PredictionCard({ className }: PredictionCardProps) {
 
   const { startUnix, endUnix } = getTimestampRange(resolutionDate, resolutionTime);
 
-  const { price: currentPrice, isLoading: priceLoading, error: priceError } = useHbarPrice();
+  const { price: currentPrice } = useHbarPrice();
 
   // Use the contract multipliers hook
-  const {
-    getSharpnessMultiplier,
-    getTimeMultiplier,
-  } = useContractMultipliers();
+  const { getSharpnessMultiplier, getTimeMultiplier } = useContractMultipliers();
 
   const { data, loading, error } = useQuery(GET_BETS_BY_TIMESTAMP, {
     variables: { startTimestamp: startUnix, endTimestamp: endUnix },
@@ -188,7 +185,7 @@ export function PredictionCard({ className }: PredictionCardProps) {
     sharpness: 0,
     leadTime: 0,
     betQuality: 0,
-    isLoading: true
+    isLoading: true,
   });
 
   // Date manipulation functions
@@ -280,44 +277,44 @@ export function PredictionCard({ className }: PredictionCardProps) {
           sharpness: 1.5,
           leadTime: 1.2,
           betQuality: 1.8,
-          isLoading: false
+          isLoading: false,
         });
         return;
       }
-      
-      setMultipliers(prev => ({ ...prev, isLoading: true }));
-      
+
+      setMultipliers((prev) => ({ ...prev, isLoading: true }));
+
       try {
         // Convert price range to basis points (1-10000)
         // selectedRange is in USD (e.g., 0.25-0.35), convert to BPS
         const priceMinBps = Math.floor(selectedRange.min * 10000).toString();
         const priceMaxBps = Math.floor(selectedRange.max * 10000).toString();
-        
+
         // Add timeout to prevent infinite loading
-        const timeout = new Promise((_, reject) => 
+        const timeout = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Contract call timeout')), 10000)
         );
-        
+
         // Get multipliers from contract with timeout
-        const [sharpnessResult, timeResult] = await Promise.race([
+        const [sharpnessResult, timeResult] = (await Promise.race([
           Promise.all([
             getSharpnessMultiplier(priceMinBps, priceMaxBps),
-            getTimeMultiplier(startUnix.toString())
+            getTimeMultiplier(startUnix.toString()),
           ]),
-          timeout
-        ]) as [string | null, string | null];
-        
+          timeout,
+        ])) as [string | null, string | null];
+
         if (sharpnessResult && timeResult) {
           // Convert from basis points to multiplier (divide by 10000)
           const sharpness = parseFloat(sharpnessResult) / 10000;
           const leadTime = parseFloat(timeResult) / 10000;
           const betQuality = sharpness * leadTime;
-          
+
           setMultipliers({
             sharpness,
             leadTime,
             betQuality,
-            isLoading: false
+            isLoading: false,
           });
         } else {
           throw new Error('Contract returned null values');
@@ -325,13 +322,13 @@ export function PredictionCard({ className }: PredictionCardProps) {
       } catch (error) {
         setMultipliers({
           sharpness: 1.5,
-          leadTime: 1.2, 
+          leadTime: 1.2,
           betQuality: 1.8,
-          isLoading: false
+          isLoading: false,
         });
       }
     };
-    
+
     // Add delay to prevent too frequent calls
     const timeoutId = setTimeout(calculateRealMultipliers, 500);
     return () => clearTimeout(timeoutId);
@@ -354,7 +351,7 @@ export function PredictionCard({ className }: PredictionCardProps) {
 
             <span className="flex gap-1  text-xs">
               <b>Current price:</b>
-              <HbarPriceDisplay size="sm" showIcon={false} showChange={false} />
+              <HbarPriceDisplay size="sm" showIcon={false} showChange={true} />
             </span>
           </div>
         </div>
