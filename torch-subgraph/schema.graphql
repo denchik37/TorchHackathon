@@ -4,7 +4,7 @@ type User @entity(immutable: true) {
   bets: [Bet!]! @derivedFrom(field: "user")
 }
 
-type UserStats @entity {
+type UserStats @entity(immutable: false) {
   id: ID!
   totalBets: Int!
   totalWon: Int!
@@ -13,7 +13,7 @@ type UserStats @entity {
 }
 
 # ---------------- BUCKET ----------------
-type Bucket @entity {
+type Bucket @entity(immutable: false) {
   id: ID!
   aggregationComplete: Boolean!
   totalBets: Int!
