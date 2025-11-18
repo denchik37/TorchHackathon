@@ -320,12 +320,7 @@ export function PredictionCard({ className }: PredictionCardProps) {
       );
     }
 
-    return (
-      <>
-        0.5%
-        <span className="text-medium-gray">(estimated)</span>
-      </>
-    );
+    return null;
   };
 
   const { sharpness, leadTime, betQuality, isLoading: multipliersLoading } = multipliers;
