@@ -1,4 +1,4 @@
-import { BigInt, Address, log } from "@graphprotocol/graph-ts"
+import { BigInt, Address } from "@graphprotocol/graph-ts"
 import {
   BetPlaced,
   BetFinalized,
@@ -9,15 +9,18 @@ import {
 } from "../generated/TorchPredictionMarket/TorchPredictionMarket"
 import { User, UserStats, Bet, Fee, Bucket } from "../generated/schema"
 
+// Helper to load or create immutable User + mutable UserStats
 function getOrCreateUser(address: Address): UserStats {
   let userId = address.toHexString()
 
+  // Create immutable User if not exists
   let user = User.load(userId)
   if (!user) {
     user = new User(userId)
     user.save()
   }
 
+  // Create mutable UserStats if not exists
   let stats = UserStats.load(userId)
   if (!stats) {
     stats = new UserStats(userId)
@@ -25,6 +28,7 @@ function getOrCreateUser(address: Address): UserStats {
     stats.totalWon = 0
     stats.totalStaked = BigInt.zero()
     stats.totalPayout = BigInt.zero()
+    stats.save()
   }
 
   return stats
@@ -44,19 +48,19 @@ export function handleBetPlaced(event: BetPlaced): void {
 
   bet.user = event.params.bettor.toHexString()
 
-  /* ---- Bucket creation ---- */
+  /* ---- Bucket creation and reference ---- */
   let bucketId = event.params.bucket.toString()
   let bucket = Bucket.load(bucketId)
   if (!bucket) {
     bucket = new Bucket(bucketId)
-    bucket.aggregationComplete = false
     bucket.totalBets = 0
+    bucket.aggregationComplete = false
   }
   bucket.totalBets += 1
   bucket.save()
 
   bet.bucket = event.params.bucket.toI32()
-  bet.bucketRef = bucketId
+  bet.bucketRef = bucketId // reference to Bucket entity
 
   /* ---- Store contract data ---- */
   bet.stake = betData.stake
@@ -77,7 +81,7 @@ export function handleBetPlaced(event: BetPlaced): void {
 
   bet.save()
 
-  /* ---- Update stats ---- */
+  /* ---- Update user stats ---- */
   stats.totalBets += 1
   stats.totalStaked = stats.totalStaked.plus(bet.stake)
   stats.save()
@@ -133,11 +137,13 @@ export function handleFeeCollected(event: FeeCollected): void {
 
 /* ---------------- BUCKET AGGREGATION COMPLETED ---------------- */
 export function handleAggregationCompleted(event: AggregationCompleted): void {
-  let bucket = Bucket.load(event.params.bucket.toString())
+  let bucketId = event.params.bucket.toString()
+  let bucket = Bucket.load(bucketId)
 
   if (!bucket) {
-    bucket = new Bucket(event.params.bucket.toString())
-    bucket.totalBets = 0 // created late
+    bucket = new Bucket(bucketId)
+    bucket.totalBets = 0
+    bucket.aggregationComplete = false
   }
 
   bucket.aggregationComplete = true
