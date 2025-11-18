@@ -95,10 +95,11 @@ export function BetHistory({ className }: BetHistoryProps) {
                     </div>
                   </td>
                   <td className="py-3 px-4 text-sm text-light-gray">
-                    {formatTinybarsToHbar(bet.stake)}
+                    {formatTinybarsToHbar(bet.stake, 4)}
                   </td>
                   <td className="py-3 px-4 text-sm text-light-gray">
-                    {formatTinybarsToHbar(bet.priceMin)} - {formatTinybarsToHbar(bet.priceMax)}
+                    {formatTinybarsToHbar(bet.priceMin, 4)} -{' '}
+                    {formatTinybarsToHbar(bet.priceMax, 4)}
                   </td>
                   <td className="py-3 px-4 text-sm text-medium-gray">
                     {formatDateUTC(bet.targetTimestamp)}
