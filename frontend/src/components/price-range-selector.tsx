@@ -258,7 +258,7 @@ export function PriceRangeSelector({
             isDraggingMin ? 'z-20' : 'z-10'
           )}
           style={{
-            left: `${((selectedMin - minPrice) / (maxPrice - minPrice)) * 100}%`,
+            left: `${Math.max(0, Math.min(100, ((selectedMin - minPrice) / (maxPrice - minPrice)) * 100))}%`,
           }}
           onMouseDown={(e) => handleMouseDown(e, true)}
         >
@@ -283,7 +283,7 @@ export function PriceRangeSelector({
             isDraggingMax ? 'z-20' : 'z-10'
           )}
           style={{
-            left: `${((selectedMax - minPrice) / (maxPrice - minPrice)) * 100}%`,
+            left: `${Math.max(0, Math.min(100, ((selectedMax - minPrice) / (maxPrice - minPrice)) * 100))}%`,
           }}
           onMouseDown={(e) => handleMouseDown(e, false)}
         >
@@ -305,8 +305,8 @@ export function PriceRangeSelector({
         <div
           className="absolute top-0 bottom-0 bg-vibrant-purple/20 pointer-events-none"
           style={{
-            left: `${((selectedMin - minPrice) / (maxPrice - minPrice)) * 100}%`,
-            width: `${((selectedMax - selectedMin) / (maxPrice - minPrice)) * 100}%`,
+            left: `${Math.max(0, Math.min(100, ((selectedMin - minPrice) / (maxPrice - minPrice)) * 100))}%`,
+            width: `${Math.max(0, Math.min(100, ((selectedMax - selectedMin) / (maxPrice - minPrice)) * 100))}%`,
           }}
         />
       </div>
