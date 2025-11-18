@@ -322,7 +322,7 @@ export function PriceRangeSelector({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="minPrice" className="block text-sm font-medium text-medium-gray mb-2 ">
-            Min Price
+            Min price
           </label>
           <input
             id="minPrice"
@@ -359,7 +359,7 @@ export function PriceRangeSelector({
         </div>
         <div>
           <label htmlFor="maxPrice" className="block text-sm font-medium text-medium-gray mb-2">
-            Max Price
+            Max price
           </label>
           <input
             id="maxPrice"

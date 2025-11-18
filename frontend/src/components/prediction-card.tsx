@@ -571,7 +571,7 @@ export function PredictionCard({ className }: PredictionCardProps) {
 
             {/* Bet Quality Multipliers */}
             <div className="space-y-2">
-              <span className="text-sm font-medium text-medium-gray ">Bet Quality</span>
+              <span className="text-sm font-medium text-medium-gray ">Bet quality</span>
               <div className="p-3 bg-neutral-900 rounded-lg space-y-3">
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
