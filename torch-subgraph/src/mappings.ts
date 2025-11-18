@@ -7,7 +7,7 @@ import {
   AggregationCompleted,
   TorchPredictionMarket
 } from "../generated/TorchPredictionMarket/TorchPredictionMarket"
-import { User, UserStats, Bet, Fee } from "../generated/schema"
+import { User, UserStats, Bet, Bucket, Fee } from "../generated/schema"
 
 // Helper to load or create immutable User + mutable UserStats
 function getOrCreateUser(address: Address): UserStats {
