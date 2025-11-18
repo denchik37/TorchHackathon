@@ -24,6 +24,8 @@ export function PriceRangeSelector({
   const [selectedMax, setSelectedMax] = useState(maxPrice - (maxPrice - minPrice) * 0.2);
   const [isDraggingMin, setIsDraggingMin] = useState(false);
   const [isDraggingMax, setIsDraggingMax] = useState(false);
+  const [minInputValue, setMinInputValue] = useState('');
+  const [maxInputValue, setMaxInputValue] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Generate histogram data (simulated bet distribution)
@@ -246,11 +248,34 @@ export function PriceRangeSelector({
           </label>
           <input
             id="minPrice"
-            type="number"
-            step="0.0001"
-            min={minPrice}
-            value={selectedMin.toFixed(4)}
-            onChange={(e) => handleMinChange(parseFloat(e.target.value) || selectedMin)}
+            type="text"
+            inputMode="decimal"
+            value={minInputValue || selectedMin.toFixed(4)}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Allow only numbers, dots, and empty string (including leading zeros)
+              if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                setMinInputValue(value);
+                if (value !== '') {
+                  const numValue = parseFloat(value);
+                  if (!isNaN(numValue)) {
+                    handleMinChange(numValue);
+                  }
+                }
+              }
+            }}
+            onBlur={() => {
+              // Reset to computed value when losing focus if invalid
+              if (minInputValue === '') {
+                setMinInputValue('');
+              }
+            }}
+            onFocus={() => {
+              // Clear computed value when focusing to allow free typing
+              if (!minInputValue) {
+                setMinInputValue(selectedMin.toFixed(4));
+              }
+            }}
             className="w-full px-3 py-2 border border-input bg-neutral-900 rounded-md text-sm text-medium-gray"
           />
         </div>
@@ -260,11 +285,34 @@ export function PriceRangeSelector({
           </label>
           <input
             id="maxPrice"
-            type="number"
-            step="0.0001"
-            max={maxPrice}
-            value={selectedMax.toFixed(4)}
-            onChange={(e) => handleMaxChange(parseFloat(e.target.value) || selectedMax)}
+            type="text"
+            inputMode="decimal"
+            value={maxInputValue || selectedMax.toFixed(4)}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Allow only numbers, dots, and empty string (including leading zeros)
+              if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                setMaxInputValue(value);
+                if (value !== '') {
+                  const numValue = parseFloat(value);
+                  if (!isNaN(numValue)) {
+                    handleMaxChange(numValue);
+                  }
+                }
+              }
+            }}
+            onBlur={() => {
+              // Reset to computed value when losing focus if invalid
+              if (maxInputValue === '') {
+                setMaxInputValue('');
+              }
+            }}
+            onFocus={() => {
+              // Clear computed value when focusing to allow free typing
+              if (!maxInputValue) {
+                setMaxInputValue(selectedMax.toFixed(4));
+              }
+            }}
             className="w-full px-3 py-2 border border-input bg-neutral-900 rounded-md text-sm text-medium-gray"
           />
         </div>

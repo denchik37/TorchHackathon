@@ -54,7 +54,7 @@ function AdminPage() {
   // Date selection - default to today
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [resolutionPrices, setResolutionPrices] = useState<[number, number][]>([]);
-  const [manualPrices, setManualPrices] = useState<Map<number, number>>(new Map());
+  const [manualPrices, setManualPrices] = useState<Map<number, string>>(new Map());
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Calculate date range for the selected day
@@ -119,20 +119,25 @@ function AdminPage() {
 
   // Get final price (manual override or fetched)
   const getFinalPrice = (timestamp: number): number | null => {
-    return manualPrices.get(timestamp) ?? findClosestPrice(timestamp);
+    const manualPrice = manualPrices.get(timestamp);
+    if (manualPrice !== undefined) {
+      const parsed = parseFloat(manualPrice);
+      return isNaN(parsed) ? null : parsed;
+    }
+    return findClosestPrice(timestamp);
   };
 
   // Handle manual price input
   const handlePriceChange = (timestamp: number, value: string) => {
-    const price = parseFloat(value);
-    if (!isNaN(price) && price > 0) {
-      setManualPrices((prev) => new Map(prev).set(timestamp, price));
-    } else if (value === '') {
+    if (value === '') {
       setManualPrices((prev) => {
         const newMap = new Map(prev);
         newMap.delete(timestamp);
         return newMap;
       });
+    } else {
+      // Store the raw string value to preserve user input
+      setManualPrices((prev) => new Map(prev).set(timestamp, value));
     }
   };
 
@@ -460,21 +465,23 @@ function AdminPage() {
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 className={`w-32 px-2 py-1 bg-transparent border rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                                   isManual ? 'border-yellow-500' : 'border-gray-600'
                                 }`}
                                 placeholder="Enter price"
                                 value={
                                   manualPrices.get(bet.targetTimestamp) ??
-                                  fetchedPrice?.toFixed(4) ??
-                                  ''
+                                  (fetchedPrice !== null ? fetchedPrice.toFixed(4) : '')
                                 }
-                                onChange={(e) =>
-                                  handlePriceChange(bet.targetTimestamp, e.target.value)
-                                }
-                                step="0.0001"
-                                min="0"
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  // Allow only numbers, dots, and empty string (including leading zeros)
+                                  if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                                    handlePriceChange(bet.targetTimestamp, value);
+                                  }
+                                }}
                               />
                             </div>
                           </td>

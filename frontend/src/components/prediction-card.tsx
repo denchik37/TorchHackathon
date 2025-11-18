@@ -527,9 +527,16 @@ export function PredictionCard({ className }: PredictionCardProps) {
                 <div className="relative">
                   <Input
                     id="depositNumber"
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={depositAmount}
-                    onChange={(e) => setDepositAmount(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow only numbers, dots, and empty string (including leading zeros)
+                      if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                        setDepositAmount(value);
+                      }
+                    }}
                     className="pr-20"
                     placeholder="0.0"
                   />
