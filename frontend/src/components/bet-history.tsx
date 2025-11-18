@@ -11,7 +11,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 const LIMIT = 10;
 const GET_BETS = gql`
   query GetBets($first: Int!, $skip: Int!) {
-    bets(first: $first, skip: $skip, orderBy: timestamp, orderDirection: desc) {
+    bets(first: $first, skip: $skip, orderBy: targetTimestamp, orderDirection: desc) {
       id
       user {
         id
@@ -20,6 +20,7 @@ const GET_BETS = gql`
       priceMin
       priceMax
       targetTimestamp
+      timestamp
     }
   }
 `;
@@ -95,14 +96,14 @@ export function BetHistory({ className }: BetHistoryProps) {
                     </div>
                   </td>
                   <td className="py-3 px-4 text-sm text-light-gray">
-                    {formatTinybarsToHbar(bet.stake, 4)}
+                    {formatTinybarsToHbar(bet.stake, 3)}
                   </td>
                   <td className="py-3 px-4 text-sm text-light-gray">
-                    {formatTinybarsToHbar(bet.priceMin, 4)} -{' '}
-                    {formatTinybarsToHbar(bet.priceMax, 4)}
+                    ${formatTinybarsToHbar(bet.priceMin, 3)} - $
+                    {formatTinybarsToHbar(bet.priceMax, 3)}
                   </td>
                   <td className="py-3 px-4 text-sm text-medium-gray">
-                    {formatDateUTC(bet.targetTimestamp)}
+                    {formatDateUTC(bet.timestamp)}
                   </td>
                 </tr>
               ))}
