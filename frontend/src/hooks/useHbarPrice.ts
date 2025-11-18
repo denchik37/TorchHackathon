@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchHbarPrice, type CoinGeckoResponse } from '@/lib/coingecko';
+import { ethers } from 'ethers';
 
 interface HbarPriceData {
   price: number;
-  priceChange24h: number;
-  priceChangePercentage24h: number;
+  priceChangePercentage: number;
   lastUpdated: Date;
   isLoading: boolean;
   error: string | null;
@@ -15,54 +14,80 @@ interface HbarPriceData {
 export function useHbarPrice() {
   const [priceData, setPriceData] = useState<Omit<HbarPriceData, 'isStale' | 'retryFetch'>>({
     price: 0,
-    priceChange24h: 0,
-    priceChangePercentage24h: 0,
+    priceChangePercentage: 0,
     lastUpdated: new Date(),
     isLoading: true,
     error: null,
   });
 
+  const fetchChainlinkPrice = useCallback(async () => {
+    const HBAR_USD_FEED_ADDRESS = '0xAF685FB45C12b92b5054ccb9313e135525F9b5d5';
+    const ABI = [
+      {
+        inputs: [],
+        name: 'latestRoundData',
+        outputs: [
+          { name: 'roundId', type: 'uint80' },
+          { name: 'answer', type: 'int256' },
+          { name: 'startedAt', type: 'uint256' },
+          { name: 'updatedAt', type: 'uint256' },
+          { name: 'answeredInRound', type: 'uint80' },
+        ],
+        stateMutability: 'view',
+        type: 'function',
+      },
+      {
+        inputs: [],
+        name: 'decimals',
+        outputs: [{ name: '', type: 'uint8' }],
+        stateMutability: 'view',
+        type: 'function',
+      },
+    ];
+
+    const provider = new ethers.providers.JsonRpcProvider('https://mainnet.hashio.io/api');
+    const contract = new ethers.Contract(HBAR_USD_FEED_ADDRESS, ABI, provider);
+
+    const [, answer] = await contract.latestRoundData();
+    const decimals = await contract.decimals();
+
+    return parseFloat(ethers.utils.formatUnits(answer, decimals));
+  }, []);
+
   const fetchHbarPriceData = useCallback(async () => {
     try {
-      setPriceData(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      const data: CoinGeckoResponse = await fetchHbarPrice();
-      
-      if (data['hedera-hashgraph']) {
-        const hbarData = data['hedera-hashgraph'];
-        setPriceData({
-          price: hbarData.usd,
-          priceChange24h: hbarData.usd_24h_change || 0,
-          priceChangePercentage24h: hbarData.usd_24h_change || 0,
-          lastUpdated: new Date(),
-          isLoading: false,
-          error: null,
-        });
-      } else {
-        throw new Error('HBAR price data not found');
-      }
+      setPriceData((prev) => ({ ...prev, isLoading: true, error: null }));
+
+      const chainlinkPrice = await fetchChainlinkPrice();
+
+      setPriceData({
+        price: chainlinkPrice,
+        priceChangePercentage: 0,
+        lastUpdated: new Date(),
+        isLoading: false,
+        error: null,
+      });
     } catch (error) {
-      setPriceData(prev => ({
+      setPriceData((prev) => ({
         ...prev,
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to fetch HBAR price',
       }));
     }
-  }, []);
+  }, [fetchChainlinkPrice]);
 
   useEffect(() => {
-    // Fetch initial price
     fetchHbarPriceData();
 
-    // Set up interval to fetch price every 30 seconds
     const interval = setInterval(fetchHbarPriceData, 30000);
 
     return () => clearInterval(interval);
   }, [fetchHbarPriceData]);
 
   // Calculate if data is stale (older than 5 minutes)
-  const isStale = !priceData.isLoading && 
-    !priceData.error && 
+  const isStale =
+    !priceData.isLoading &&
+    !priceData.error &&
     Date.now() - priceData.lastUpdated.getTime() > 5 * 60 * 1000;
 
   return {
@@ -70,4 +95,4 @@ export function useHbarPrice() {
     isStale,
     retryFetch: fetchHbarPriceData,
   };
-} 
+}

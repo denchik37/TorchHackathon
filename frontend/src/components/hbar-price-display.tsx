@@ -18,7 +18,7 @@ export function HbarPriceDisplay({
   className = '',
   size = 'md' 
 }: HbarPriceDisplayProps) {
-  const { price, priceChangePercentage24h, isLoading, error, isStale, retryFetch } = useHbarPrice();
+  const { price, priceChangePercentage, isLoading, error, isStale, retryFetch } = useHbarPrice();
 
   const sizeClasses = {
     sm: 'text-xs',
@@ -82,15 +82,15 @@ export function HbarPriceDisplay({
           </span>
         )}
       </span>
-      {showChange && priceChangePercentage24h !== 0 && (
-        <div className={`flex items-center space-x-1 ${priceChangePercentage24h > 0 ? 'text-green-500' : 'text-red-500'} ${isStale ? 'opacity-60' : ''}`}>
-          {priceChangePercentage24h > 0 ? (
+      {showChange && priceChangePercentage !== 0 && (
+        <div className={`flex items-center space-x-1 ${priceChangePercentage > 0 ? 'text-green-500' : 'text-red-500'} ${isStale ? 'opacity-60' : ''}`}>
+          {priceChangePercentage > 0 ? (
             <TrendingUp className={iconSizes[size]} />
           ) : (
             <TrendingDown className={iconSizes[size]} />
           )}
           <span className={`${sizeClasses[size]}`}>
-            {Math.abs(priceChangePercentage24h).toFixed(2)}%
+            {Math.abs(priceChangePercentage).toFixed(2)}%
           </span>
         </div>
       )}
