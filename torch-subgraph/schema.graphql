@@ -1,9 +1,10 @@
+# ---------------- USER ----------------
 type User @entity(immutable: true) {
   id: ID!
   bets: [Bet!]! @derivedFrom(field: "user")
 }
 
-type UserStats @entity(immutable:false) {
+type UserStats @entity {
   id: ID!
   totalBets: Int!
   totalWon: Int!
@@ -11,18 +12,20 @@ type UserStats @entity(immutable:false) {
   totalPayout: BigInt!
 }
 
-type Bucket @entity(immutable:true) {
-  id: ID!                        
+# ---------------- BUCKET ----------------
+type Bucket @entity {
+  id: ID!
   aggregationComplete: Boolean!
-  totalBets: Int!               
+  totalBets: Int!
   bets: [Bet!]! @derivedFrom(field: "bucketRef")
 }
 
+# ---------------- BET ----------------
 type Bet @entity(immutable: true) {
   id: ID!
   user: User!
-  bucket: Int!          
-  bucketRef: Bucket!    
+  bucket: Int!
+  bucketRef: Bucket!
   stake: BigInt!
   priceMin: BigInt!
   priceMax: BigInt!
@@ -39,6 +42,7 @@ type Bet @entity(immutable: true) {
   transactionHash: Bytes!
 }
 
+# ---------------- FEE ----------------
 type Fee @entity(immutable: true) {
   id: ID!
   amount: BigInt!
