@@ -6,6 +6,10 @@ export interface User {
   totalPayout: number;
 }
 
+export interface Bucket {
+  aggregationComplete: boolean;
+}
+
 export interface Bet {
   id: string;
   user: User;
@@ -20,4 +24,5 @@ export interface Bet {
   won: boolean;
   weight: number;
   qualityBps?: number;
+  bucket?: Bucket;
 }

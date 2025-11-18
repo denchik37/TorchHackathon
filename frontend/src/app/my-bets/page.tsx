@@ -41,6 +41,9 @@ const GET_USER = gql`
         qualityBps
         timestamp
         targetTimestamp
+        bucket {
+          aggregationComplete
+        }
       }
     }
   }
@@ -52,7 +55,7 @@ type Data = {
 
 const getBetStatus = (bet: Bet): 'active' | 'won' | 'lost' | 'unredeemed' => {
   if (!bet.finalized) return 'active';
-  if (bet.won && !bet.claimed) return 'unredeemed';
+  if (bet.won && !bet.claimed && bet.bucket?.aggregationComplete === true) return 'unredeemed';
   if (bet.won) return 'won';
   return 'lost';
 };
@@ -103,7 +106,7 @@ export default function MyBetsPage() {
 
   const wonBets = bets.filter((bet) => bet.won);
   const lostBets = bets.filter((bet) => !bet.won && bet.finalized);
-  const unredeemedBets = bets.filter((bet) => !bet.claimed && bet.finalized);
+  const unredeemedBets = bets.filter((bet) => bet.finalized && !bet.claimed && bet.bucket?.aggregationComplete === true);
   const unredeemedAmount = unredeemedBets.reduce((sum, bet) => sum + bet.payout || 0, 0);
 
   const categories = [
@@ -167,7 +170,7 @@ export default function MyBetsPage() {
       setRedeemingAll(true);
 
       // Process each unredeemed bet that is won
-      const unredeemedWonBets = bets.filter((bet) => !bet.claimed && bet.finalized && bet.won);
+      const unredeemedWonBets = bets.filter((bet) => bet.finalized && !bet.claimed && bet.won && bet.bucket?.aggregationComplete === true);
 
       let processedCount = 0;
       let errorCount = 0;
