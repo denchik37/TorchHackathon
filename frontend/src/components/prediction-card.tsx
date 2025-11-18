@@ -82,6 +82,7 @@ export function PredictionCard({ className }: PredictionCardProps) {
   const [isPlacingBet, setIsPlacingBet] = useState(false);
   const [isBetPlaced, setIsBetPlaced] = useState(false);
   const [betError, setBetError] = useState<string | null>(null);
+  const [transactionId, setTransactionId] = useState<string | null>(null);
 
   const { startUnix, endUnix } = getTimestampRange(resolutionDate, resolutionTime);
   
@@ -167,6 +168,9 @@ export function PredictionCard({ className }: PredictionCardProps) {
         },
       })) as string;
 
+      // Store transaction ID for explorer link
+      setTransactionId(betId);
+
       watch(betId, {
         onSuccess: (transaction) => {
           setIsBetPlaced(true);
@@ -188,8 +192,13 @@ export function PredictionCard({ className }: PredictionCardProps) {
   };
 
   const handleViewExplorer = () => {
-    // Open transaction in explorer (mock implementation)
-    window.open('https://hederaexplorer.io/', '_blank');
+    if (transactionId) {
+      // Open specific transaction in HashScan (most reliable Hedera explorer)
+      window.open(`https://hashscan.io/mainnet/transaction/${transactionId}`, '_blank');
+    } else {
+      // Fallback to HashScan homepage if no transaction ID
+      window.open('https://hashscan.io/mainnet', '_blank');
+    }
   };
 
   const closeBetPlacingModal = () => {
@@ -199,6 +208,7 @@ export function PredictionCard({ className }: PredictionCardProps) {
 
   const closeBetPlacedModal = () => {
     setIsBetPlaced(false);
+    setTransactionId(null); // Clear transaction ID when closing
 
     // Reset form
     setDepositAmount('');
