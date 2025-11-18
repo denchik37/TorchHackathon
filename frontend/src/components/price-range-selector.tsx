@@ -20,8 +20,8 @@ export function PriceRangeSelector({
   onRangeChange,
   className,
 }: PriceRangeSelectorProps) {
-  const [selectedMin, setSelectedMin] = useState(minPrice + (maxPrice - minPrice) * 0.2);
-  const [selectedMax, setSelectedMax] = useState(maxPrice - (maxPrice - minPrice) * 0.2);
+  const [selectedMin, setSelectedMin] = useState(minPrice + (maxPrice - minPrice) * 0.1);
+  const [selectedMax, setSelectedMax] = useState(maxPrice - (maxPrice - minPrice) * 0.1);
   const [isDraggingMin, setIsDraggingMin] = useState(false);
   const [isDraggingMax, setIsDraggingMax] = useState(false);
   const [minInputValue, setMinInputValue] = useState('');
@@ -63,21 +63,15 @@ export function PriceRangeSelector({
   const maxBetAmount = Math.max(...histogramData.map((d) => d.amount));
 
   const handleMinChange = (value: number) => {
-    if (value < minPrice) {
-      return;
-    }
-
-    const newMin = Math.min(value, selectedMax - 0.01);
+    // Allow values below minPrice for user flexibility
+    const newMin = Math.min(value, selectedMax - 0.0001);
     setSelectedMin(newMin);
     onRangeChange(newMin, selectedMax);
   };
 
   const handleMaxChange = (value: number) => {
-    if (value > maxPrice) {
-      return;
-    }
-
-    const newMax = Math.max(value, selectedMin + 0.01);
+    // Allow values above maxPrice for user flexibility
+    const newMax = Math.max(value, selectedMin + 0.0001);
     setSelectedMax(newMax);
     onRangeChange(selectedMin, newMax);
   };

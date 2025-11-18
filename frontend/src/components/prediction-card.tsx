@@ -481,8 +481,8 @@ export function PredictionCard({ className }: PredictionCardProps) {
             {/* Price Range Selection */}
 
             <PriceRangeSelector
-              minPrice={0.2}
-              maxPrice={0.34}
+              minPrice={Math.max(0.01, currentPrice * 0.5)} // 50% below current price, min 0.01
+              maxPrice={currentPrice * 2} // 200% of current price
               currentPrice={currentPrice}
               totalBets={totalBets}
               onRangeChange={handleRangeChange}
