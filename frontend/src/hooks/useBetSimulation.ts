@@ -44,15 +44,19 @@ export function useBetSimulation() {
         // Use provided stake or default to 1 HBAR
         const stake = stakeAmount && parseFloat(stakeAmount) > 0 ? stakeAmount : '1';
 
+        // Contract expects basis points (1% = 100 BPS, so $0.15 = 1500 BPS)
+        const priceMinBps = Math.round(parseFloat(priceMin) * 10000);
+        const priceMaxBps = Math.round(parseFloat(priceMax) * 10000);
+
         const result = await readContract({
           address: `0x${contractId.toSolidityAddress()}`,
           abi: TorchPredictionMarketABI.abi,
           functionName: 'simulatePlaceBet',
           args: [
             targetTimestamp,
-            ethers.utils.parseUnits(priceMin, 8), // Convert to 8 decimals for price
-            ethers.utils.parseUnits(priceMax, 8), // Convert to 8 decimals for price
-            ethers.utils.parseEther(stake) // Use actual or default stake
+            priceMinBps, // Raw basis points
+            priceMaxBps, // Raw basis points
+            ethers.utils.parseEther(stake) // Wei format (correct)
           ],
         }) as SimulatePlaceBetResult;
 
