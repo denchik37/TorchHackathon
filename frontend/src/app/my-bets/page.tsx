@@ -247,7 +247,7 @@ export default function MyBetsPage() {
             {!bets.length && !loading && <NoBetsContainer />}
 
             {bets.length > 0 && (
-              <div className="max-w-4xl mx-auto space-y-6">
+              <div className="max-w-lg mx-auto space-y-6">
                 {/* Bet Categories */}
                 <div className="flex space-x-2">
                   {categories.map((category) => (
