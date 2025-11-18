@@ -31,11 +31,11 @@ export function BetPlacingModal({ isOpen, onClose, onViewExplorer }: BetPlacingM
         </div>
 
         {/* Title */}
-        <h3 className="text-xl font-bold text-white text-center mb-2">Bet submitted</h3>
+        <h3 className="text-xl font-bold text-white text-center mb-2">Bet in progress</h3>
 
         {/* Description */}
         <div className="text-center text-gray-300 mb-6 space-y-1">
-          <p>The transaction has been submitted.</p>
+          <p>Your bet is being processed.</p>
           <p>It takes a couple of minutes to complete.</p>
         </div>
 
