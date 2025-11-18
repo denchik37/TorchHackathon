@@ -192,3 +192,18 @@ export function handleFeeCollected(event: FeeCollected): void {
 
   log.info("[FeeCollected] Saved Fee entity {}", [feeId])
 }
+
+
+/* ---------------- BUCKET AGGREGATION COMPLETED ---------------- */
+export function handleAggregationCompleted(event: AggregationCompleted): void {
+  let bucket = Bucket.load(event.params.bucket.toString())
+
+  if (!bucket) {
+    bucket = new Bucket(event.params.bucket.toString())
+    bucket.totalBets = 0 // created late
+  }
+
+  bucket.aggregationComplete = true
+  bucket.save()
+}
+
