@@ -522,15 +522,52 @@ export function PredictionCard({ className }: PredictionCardProps) {
             </div>
 
             {/* Price Range Selection */}
-
-            <PriceRangeSelector
-              minPrice={Math.max(0.01, currentPrice * 0.5)} // 50% below current price, min 0.01
-              maxPrice={currentPrice * 2} // 200% of current price
-              currentPrice={currentPrice}
-              totalBets={totalBets}
-              selectedDate={resolutionDate}
-              onRangeChange={handleRangeChange}
-            />
+            {priceLoading || !currentPrice ? (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="h-4 w-20 bg-neutral-800 rounded animate-pulse"></div>
+                  <div className="h-4 w-24 bg-neutral-800 rounded animate-pulse"></div>
+                </div>
+                <div className="relative h-40 bg-neutral-900 rounded-lg">
+                  <div className="flex items-end justify-between h-full space-x-0.5 p-2">
+                    {Array.from({ length: 30 }).map((_, index) => (
+                      <div
+                        key={index}
+                        className="flex-1 bg-neutral-800 rounded-t animate-pulse"
+                        style={{
+                          height: `${Math.random() * 60 + 20}%`,
+                          minHeight: '8px',
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex justify-between">
+                  <div className="h-3 w-12 bg-neutral-800 rounded animate-pulse"></div>
+                  <div className="h-3 w-12 bg-neutral-800 rounded animate-pulse"></div>
+                  <div className="h-3 w-12 bg-neutral-800 rounded animate-pulse"></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="h-4 w-16 bg-neutral-800 rounded animate-pulse"></div>
+                    <div className="h-10 bg-neutral-900 rounded animate-pulse"></div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 w-16 bg-neutral-800 rounded animate-pulse"></div>
+                    <div className="h-10 bg-neutral-900 rounded animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <PriceRangeSelector
+                minPrice={Math.max(0.01, currentPrice * 0.5)} // 50% below current price, min 0.01
+                maxPrice={currentPrice * 2} // 200% of current price
+                currentPrice={currentPrice}
+                totalBets={totalBets}
+                selectedDate={resolutionDate}
+                onRangeChange={handleRangeChange}
+              />
+            )}
 
             {/* Bet Quality Multipliers */}
             <div className="space-y-2">
