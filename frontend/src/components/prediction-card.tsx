@@ -84,6 +84,19 @@ export function PredictionCard({ className }: PredictionCardProps) {
   const [betError, setBetError] = useState<string | null>(null);
 
   const { startUnix, endUnix } = getTimestampRange(resolutionDate, resolutionTime);
+  
+  // Validate minimum lead period
+  const validateLeadPeriod = () => {
+    const selectedTime = new Date(
+      Date.UTC(resolutionDate.getUTCFullYear(), resolutionDate.getUTCMonth(), resolutionDate.getUTCDate(), 
+      parseInt(resolutionTime.split(':')[0]), parseInt(resolutionTime.split(':')[1]), 0)
+    );
+    const minimumTime = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day from now
+    return selectedTime >= minimumTime;
+  };
+  
+  const hasValidLeadPeriod = validateLeadPeriod();
+  const leadPeriodHours = Math.max(0, (startUnix * 1000 - Date.now()) / (60 * 60 * 1000));
 
   const { price: currentPrice } = useHbarPrice();
 
@@ -208,8 +221,9 @@ export function PredictionCard({ className }: PredictionCardProps) {
   const decrementDate = () => {
     const newDate = new Date(resolutionDate);
     newDate.setDate(newDate.getDate() - 1);
-    // Don't allow dates in the past
-    if (newDate > new Date()) {
+    // Don't allow dates with less than 1-day lead period
+    const minimumDate = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day from now
+    if (newDate >= minimumDate) {
       setResolutionDate(newDate);
     }
   };
@@ -266,7 +280,15 @@ export function PredictionCard({ className }: PredictionCardProps) {
   const hasValidAmount =
     depositAmount && parseFloat(depositAmount) > 0 && parseFloat(depositAmount) <= balance;
   const isWalletConnected = isConnected;
-  const canPlaceBet = hasValidAmount && isWalletConnected && !isPlacingBet;
+  const canPlaceBet = hasValidAmount && isWalletConnected && !isPlacingBet && hasValidLeadPeriod;
+
+  const getButtonText = () => {
+    if (isPlacingBet) return 'Processing...';
+    if (!isWalletConnected) return 'Connect Wallet';
+    if (!hasValidLeadPeriod) return `Minimum 24h lead required (${leadPeriodHours.toFixed(1)}h)`;
+    if (!hasValidAmount) return 'Enter Amount';
+    return 'Place Bet';
+  };
 
   useEffect(() => {
     if (data?.bets?.length) {
@@ -561,13 +583,7 @@ export function PredictionCard({ className }: PredictionCardProps) {
               onClick={handlePlaceBet}
               disabled={!canPlaceBet}
             >
-              {isPlacingBet
-                ? 'Processing...'
-                : !isWalletConnected
-                  ? 'Connect Wallet'
-                  : !hasValidAmount
-                    ? 'Enter Amount'
-                    : 'Place Bet'}
+              {getButtonText()}
             </Button>
           </TabsContent>
 
