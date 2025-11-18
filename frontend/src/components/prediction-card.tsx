@@ -534,6 +534,7 @@ export function PredictionCard({ className }: PredictionCardProps) {
               maxPrice={currentPrice * 2} // 200% of current price
               currentPrice={currentPrice}
               totalBets={totalBets}
+              selectedDate={resolutionDate}
               onRangeChange={handleRangeChange}
             />
 

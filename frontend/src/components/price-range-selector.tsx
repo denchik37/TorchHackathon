@@ -2,12 +2,37 @@
 
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { gql, useQuery } from '@apollo/client';
+
+const GET_BETS_FOR_DAY = gql`
+  query GetBetsForDay($startTimestamp: String!, $endTimestamp: String!) {
+    bets(where: { targetTimestamp_gte: $startTimestamp, targetTimestamp_lte: $endTimestamp }) {
+      id
+      stake
+      priceMin
+      priceMax
+      targetTimestamp
+    }
+  }
+`;
+
+// Helper function to get day's timestamp range
+function getDayTimestampRange(date: Date) {
+  const startOfDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0));
+  const endOfDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 23, 59, 59));
+  
+  return {
+    startTimestamp: Math.floor(startOfDay.getTime() / 1000).toString(),
+    endTimestamp: Math.floor(endOfDay.getTime() / 1000).toString(),
+  };
+}
 
 interface PriceRangeSelectorProps {
   minPrice: number;
   maxPrice: number;
   currentPrice: number;
   totalBets: number;
+  selectedDate: Date;
   onRangeChange: (min: number, max: number) => void;
   className?: string;
 }
@@ -17,6 +42,7 @@ export function PriceRangeSelector({
   maxPrice,
   currentPrice,
   totalBets,
+  selectedDate,
   onRangeChange,
   className,
 }: PriceRangeSelectorProps) {
@@ -28,9 +54,41 @@ export function PriceRangeSelector({
   const [maxInputValue, setMaxInputValue] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Generate histogram data (simulated bet distribution)
+  // Get timestamp range for the selected day
+  const { startTimestamp, endTimestamp } = getDayTimestampRange(selectedDate);
+  
+  // Fetch real bet data for the selected day
+  const { data: betsData, loading: betsLoading } = useQuery(GET_BETS_FOR_DAY, {
+    variables: { startTimestamp, endTimestamp },
+    fetchPolicy: 'cache-and-network',
+  });
+
+  // Generate histogram data from real bet data
   const histogramData = useMemo(() => {
-    const buckets = 30; // More buckets for smoother histogram
+    if (betsLoading || !betsData?.bets) {
+      // Show loading placeholder
+      const buckets = 30;
+      const bucketSize = (maxPrice - minPrice) / buckets;
+      const data = [];
+      
+      for (let i = 0; i < buckets; i++) {
+        const bucketMin = minPrice + i * bucketSize;
+        const bucketMax = bucketMin + bucketSize;
+        const bucketCenter = (bucketMin + bucketMax) / 2;
+        
+        data.push({
+          min: bucketMin,
+          max: bucketMax,
+          center: bucketCenter,
+          amount: 0,
+          isSelected: bucketCenter >= selectedMin && bucketCenter <= selectedMax,
+        });
+      }
+      return data;
+    }
+
+    // Process real bet data into histogram buckets
+    const buckets = 30;
     const bucketSize = (maxPrice - minPrice) / buckets;
     const data = [];
 
@@ -39,26 +97,31 @@ export function PriceRangeSelector({
       const bucketMax = bucketMin + bucketSize;
       const bucketCenter = (bucketMin + bucketMax) / 2;
 
-      // Simulate bet distribution with a normal-like curve
-      const distanceFromCurrent = Math.abs(bucketCenter - currentPrice);
-      const maxDistance = (maxPrice - minPrice) / 2;
-      const normalizedDistance = distanceFromCurrent / maxDistance;
+      // Find bets that overlap with this price bucket
+      const betsInBucket = betsData.bets.filter((bet: any) => {
+        const betMinPrice = parseFloat(bet.priceMin) / 10000; // Convert from basis points
+        const betMaxPrice = parseFloat(bet.priceMax) / 10000;
+        
+        // Check if bet price range overlaps with bucket
+        return (betMinPrice <= bucketMax && betMaxPrice >= bucketMin);
+      });
 
-      // Create a bell curve around current price
-      const betDensity = Math.exp(-Math.pow(normalizedDistance * 2, 2));
-      const betAmount = Math.floor((betDensity * totalBets) / 15) + Math.random() * 30;
+      // Sum up stakes for bets in this bucket
+      const totalStakeInBucket = betsInBucket.reduce((sum: number, bet: any) => {
+        return sum + parseFloat(bet.stake) / 1e18; // Convert from wei to HBAR
+      }, 0);
 
       data.push({
         min: bucketMin,
         max: bucketMax,
         center: bucketCenter,
-        amount: betAmount,
+        amount: totalStakeInBucket,
         isSelected: bucketCenter >= selectedMin && bucketCenter <= selectedMax,
       });
     }
 
     return data;
-  }, [minPrice, maxPrice, currentPrice, totalBets, selectedMin, selectedMax]);
+  }, [minPrice, maxPrice, selectedMin, selectedMax, betsData, betsLoading]);
 
   const maxBetAmount = Math.max(...histogramData.map((d) => d.amount));
 
@@ -131,7 +194,7 @@ export function PriceRangeSelector({
   return (
     <div className={cn('space-y-4', className)}>
       <div className="flex justify-between items-center">
-        <h3 className="text-sm font-medium text-medium-gray">Select Price Range</h3>
+        <h3 className="text-sm font-medium text-medium-gray">Current bets</h3>
 
         <span className="text-sm text-medium-gray">
           Total bets: {totalBets.toLocaleString()} HBAR
