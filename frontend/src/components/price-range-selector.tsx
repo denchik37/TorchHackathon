@@ -214,7 +214,7 @@ export function PriceRangeSelector({
   return (
     <div className={cn('space-y-4', className)}>
       <div className="flex justify-between items-center">
-        <h3 className="text-sm font-medium text-medium-gray">Current bets</h3>
+        <h3 className="text-sm font-medium text-medium-gray">Select price range</h3>
 
         <span className="text-sm text-medium-gray">
           Total volume: {totalVolumeHbar.toLocaleString(undefined, { maximumFractionDigits: 2 })}{' '}
