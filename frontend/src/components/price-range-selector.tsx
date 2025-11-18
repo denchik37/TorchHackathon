@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { cn, formatTinybarsToHbar } from '@/lib/utils';
 import { gql, useQuery } from '@apollo/client';
 
@@ -57,6 +57,12 @@ export function PriceRangeSelector({
   const [minInputValue, setMinInputValue] = useState('');
   const [maxInputValue, setMaxInputValue] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Update selected range when price props change
+  useEffect(() => {
+    setSelectedMin(minPrice + (maxPrice - minPrice) * 0.1);
+    setSelectedMax(maxPrice - (maxPrice - minPrice) * 0.1);
+  }, [minPrice, maxPrice]);
 
   // Get timestamp range for the selected day
   const { startTimestamp, endTimestamp } = getDayTimestampRange(selectedDate);
@@ -194,7 +200,7 @@ export function PriceRangeSelector({
     setIsDraggingMax(false);
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isDraggingMin || isDraggingMax) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
