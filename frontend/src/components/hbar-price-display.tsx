@@ -2,23 +2,29 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { TrendingUp, TrendingDown, RefreshCw, RotateCcw } from 'lucide-react';
-import { useHbarPrice } from '@/hooks/useHbarPrice';
+import { RefreshCw, RotateCcw } from 'lucide-react';
 
 interface HbarPriceDisplayProps {
-  showChange?: boolean;
+  price: number;
+  isLoading: boolean;
+  error: string | null;
+  isStale: boolean;
+  retryFetch?: () => void;
   showIcon?: boolean;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
 }
 
 export function HbarPriceDisplay({
-  showChange = true,
+  price,
+  isLoading,
+  error,
+  isStale,
+  retryFetch,
   showIcon = true,
   className = '',
   size = 'md',
 }: HbarPriceDisplayProps) {
-  const { price, priceChangePercentage, isLoading, error, isStale, retryFetch } = useHbarPrice();
 
   const sizeClasses = {
     sm: 'text-xs',
@@ -38,7 +44,7 @@ export function HbarPriceDisplay({
     lg: { width: 20, height: 20 },
   };
 
-  if (isLoading) {
+  if (isLoading && price === 0) {
     return (
       <div className={`flex items-center space-x-1 ${className}`}>
         <RefreshCw className={`${iconSizes[size]} animate-spin text-medium-gray`} />
@@ -51,13 +57,15 @@ export function HbarPriceDisplay({
     return (
       <div className={`flex items-center space-x-1 ${className}`}>
         <span className={`${sizeClasses[size]} text-red-500`}>Price unavailable</span>
-        <button
-          onClick={retryFetch}
-          className={`${iconSizes[size]} text-red-500 hover:text-red-400 transition-colors`}
-          title="Retry fetching price"
-        >
-          <RotateCcw className="w-full h-full" />
-        </button>
+        {retryFetch && (
+          <button
+            onClick={retryFetch}
+            className={`${iconSizes[size]} text-red-500 hover:text-red-400 transition-colors`}
+            title="Retry fetching price"
+          >
+            <RotateCcw className="w-full h-full" />
+          </button>
+        )}
       </div>
     );
   }
@@ -82,21 +90,6 @@ export function HbarPriceDisplay({
           </span>
         )}
       </span>
-
-      {showChange && priceChangePercentage !== 0 && (
-        <div
-          className={`flex items-center space-x-1 ${priceChangePercentage > 0 ? 'text-green-500' : 'text-red-500'} ${isStale ? 'opacity-60' : ''}`}
-        >
-          {priceChangePercentage > 0 ? (
-            <TrendingUp className={iconSizes[size]} />
-          ) : (
-            <TrendingDown className={iconSizes[size]} />
-          )}
-          <span className={`${sizeClasses[size]}`}>
-            {Math.abs(priceChangePercentage).toFixed(2)}%
-          </span>
-        </div>
-      )}
     </div>
   );
 }

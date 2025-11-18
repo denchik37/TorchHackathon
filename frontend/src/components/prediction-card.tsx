@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
 import { gql, useQuery } from '@apollo/client';
 import { Minus, Plus, AlertTriangle } from 'lucide-react';
@@ -96,10 +96,10 @@ export function PredictionCard({ className }: PredictionCardProps) {
     return selectedTime >= minimumTime;
   };
   
-  const hasValidLeadPeriod = validateLeadPeriod();
-  const leadPeriodHours = Math.max(0, (startUnix * 1000 - Date.now()) / (60 * 60 * 1000));
+  const hasValidLeadPeriod = useMemo(() => validateLeadPeriod(), [resolutionDate, resolutionTime]);
+  const leadPeriodHours = useMemo(() => Math.max(0, (startUnix * 1000 - Date.now()) / (60 * 60 * 1000)), [startUnix]);
 
-  const { price: currentPrice } = useHbarPrice();
+  const { price: currentPrice, isLoading: priceLoading, error: priceError, isStale, retryFetch } = useHbarPrice();
 
   // Use the contract multipliers hook
   const { getSharpnessMultiplier, getTimeMultiplier } = useContractMultipliers();
@@ -393,7 +393,15 @@ export function PredictionCard({ className }: PredictionCardProps) {
 
             <span className="flex gap-1  text-xs">
               <b>Current price:</b>
-              <HbarPriceDisplay size="sm" showIcon={false} showChange={true} />
+              <HbarPriceDisplay 
+                price={currentPrice}
+                isLoading={priceLoading}
+                error={priceError}
+                isStale={isStale}
+                retryFetch={retryFetch}
+                size="sm" 
+                showIcon={false} 
+              />
             </span>
           </div>
         </div>
