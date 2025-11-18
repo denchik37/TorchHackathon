@@ -215,7 +215,12 @@ export function PriceRangeSelector({
   return (
     <div className={cn('space-y-4', className)}>
       <div className="flex justify-between items-center">
-        <h3 className="text-sm font-medium text-medium-gray">Select price range</h3>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 border border-[#F5A623] text-[#F5A623] text-sm font-bold rounded-full flex items-center justify-center">
+            2
+          </div>
+          <h3 className="text-sm font-medium text-medium-gray">Select price range</h3>
+        </div>
 
         <span className="text-sm text-medium-gray">
           Total volume: {totalVolumeHbar.toLocaleString(undefined, { maximumFractionDigits: 2 })}{' '}

@@ -455,7 +455,12 @@ export function PredictionCard({ className }: PredictionCardProps) {
           <TabsContent value="bet" className="space-y-6">
             {/* Resolution Time Selection */}
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-medium-gray">Select resolution time</h3>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 border border-[#F5A623] text-[#F5A623] text-sm font-bold rounded-full flex items-center justify-center">
+                  1
+                </div>
+                <h3 className="text-sm font-medium text-medium-gray">Select resolution time</h3>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-neutral-900 d-flex flex-col items-center justify-center p-4 gap-2 rounded-lg text-center">
                   <span className="text-sm font-medium text-medium-gray">Date</span>
@@ -600,9 +605,14 @@ export function PredictionCard({ className }: PredictionCardProps) {
 
             {/* Deposit Amount */}
             <div>
-              <label htmlFor="depositNumber" className="text-sm font-medium text-medium-gray">
-                Deposit amount
-              </label>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-6 h-6 border border-[#F5A623] text-[#F5A623] text-sm font-bold rounded-full flex items-center justify-center">
+                  3
+                </div>
+                <label htmlFor="depositNumber" className="text-sm font-medium text-medium-gray">
+                  Deposit amount
+                </label>
+              </div>
 
               <div className="bg-neutral-900 p-4 rounded-lg my-2">
                 <div className="relative">
