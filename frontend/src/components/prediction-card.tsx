@@ -95,8 +95,18 @@ export function PredictionCard({ className }: PredictionCardProps) {
     // variables: { startTimestamp: '1754472860', endTimestamp: '1754579194' },
   });
 
-  const totalBets = 1300;
-  const activeBets = 375;
+  // Query for total bet counts
+  const { data: allBetsData } = useQuery(gql`
+    query GetAllBets {
+      bets {
+        id
+        finalized
+      }
+    }
+  `);
+
+  const totalBets = allBetsData?.bets?.length || 0;
+  const activeBets = allBetsData?.bets?.filter((bet: any) => !bet.finalized)?.length || 0;
 
   const handleRangeChange = (min: number, max: number) => {
     setSelectedRange({ min, max });
