@@ -77,7 +77,6 @@ export function PriceRangeSelector({
   const totalVolumeHbar = useMemo(() => {
     if (betsLoading || !betsData?.bets) return 0;
 
-    
     return betsData.bets.reduce((sum: number, bet: any) => {
       return sum + parseFloat(formatTinybarsToHbar(bet.stake));
     }, 0);
@@ -131,13 +130,12 @@ export function PriceRangeSelector({
         return sum + parseFloat(formatTinybarsToHbar(bet.stake));
       }, 0);
 
-
       data.push({
         min: bucketMin,
         max: bucketMax,
         center: bucketCenter,
         amount: totalStakeInBucket,
-        isSelected: bucketCenter >= selectedMin && bucketCenter <= selectedMax,
+        isSelected: true,
       });
     }
 
@@ -235,10 +233,7 @@ export function PriceRangeSelector({
           {histogramData.map((bucket, index) => (
             <div
               key={index}
-              className={cn(
-                'flex-1 bg-vibrant-purple/30 rounded-t transition-all duration-200',
-                bucket.isSelected && 'bg-vibrant-purple'
-              )}
+              className={cn('flex-1 bg-[#3B2D72] rounded-t transition-all duration-200')}
               style={{
                 height: `${bucket.amount > 0 ? Math.max(8, (bucket.amount / maxBetAmount) * 100) : 0}%`,
               }}
@@ -306,12 +301,13 @@ export function PriceRangeSelector({
           </div>
         </div>
 
-        {/* Selected range highlight */}
+        {/* Selected range highlight - semitransparent area between sliders */}
         <div
-          className="absolute top-0 bottom-0 bg-vibrant-purple/20 pointer-events-none"
+          className="absolute top-0 bottom-0 pointer-events-none z-10"
           style={{
             left: `${Math.max(0, Math.min(100, ((selectedMin - minPrice) / (maxPrice - minPrice)) * 100))}%`,
-            width: `${Math.max(0, Math.min(100, ((selectedMax - selectedMin) / (maxPrice - minPrice)) * 100))}%`,
+            width: `${Math.max(5, Math.min(100, ((selectedMax - selectedMin) / (maxPrice - minPrice)) * 100))}%`,
+            backgroundColor: 'rgba(200, 170, 255, 0.08)', // Much lighter purple with very low opacity
           }}
         />
       </div>
