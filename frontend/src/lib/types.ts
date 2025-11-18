@@ -7,6 +7,7 @@ export interface User {
 }
 
 export interface Bucket {
+  id: string;
   aggregationComplete: boolean;
 }
 
@@ -24,5 +25,6 @@ export interface Bet {
   won: boolean;
   weight: number;
   qualityBps?: number;
-  bucket?: Bucket;
+  bucket: number;
+  bucketRef?: Bucket;
 }
