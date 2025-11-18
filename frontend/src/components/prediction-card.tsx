@@ -35,12 +35,12 @@ interface PredictionCardProps {
 
 const GET_BETS_BY_TIMESTAMP = gql`
   query GetBetsByTimestamp($startTimestamp: Int!, $endTimestamp: Int!) {
-    bets(where: { timestamp_gte: $startTimestamp, timestamp_lte: $endTimestamp }) {
+    bets(where: { targetTimestamp_gte: $startTimestamp, targetTimestamp_lte: $endTimestamp }) {
       id
       stake
       priceMin
       priceMax
-      timestamp
+      targetTimestamp
     }
   }
 `;
@@ -119,9 +119,8 @@ export function PredictionCard({ className }: PredictionCardProps) {
   // Use bet simulation hook
   const { simulatePlaceBet } = useBetSimulation();
 
-  const { data, loading, error } = useQuery(GET_BETS_BY_TIMESTAMP, {
+  const { data } = useQuery(GET_BETS_BY_TIMESTAMP, {
     variables: { startTimestamp: startUnix, endTimestamp: endUnix },
-    // variables: { startTimestamp: '1754472860', endTimestamp: '1754579194' },
   });
 
   // Query for total bet counts

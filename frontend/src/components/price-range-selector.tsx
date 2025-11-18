@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useCallback } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, formatTinybarsToHbar } from '@/lib/utils';
 import { gql, useQuery } from '@apollo/client';
 
 const GET_BETS_FOR_DAY = gql`
-  query GetBetsForDay($startTimestamp: String!, $endTimestamp: String!) {
+  query GetBetsForDay($startTimestamp: Int!, $endTimestamp: Int!) {
     bets(where: { targetTimestamp_gte: $startTimestamp, targetTimestamp_lte: $endTimestamp }) {
       id
       stake
@@ -18,12 +18,16 @@ const GET_BETS_FOR_DAY = gql`
 
 // Helper function to get day's timestamp range
 function getDayTimestampRange(date: Date) {
-  const startOfDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0));
-  const endOfDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 23, 59, 59));
-  
+  const startOfDay = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0)
+  );
+  const endOfDay = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 23, 59, 59)
+  );
+
   return {
-    startTimestamp: Math.floor(startOfDay.getTime() / 1000).toString(),
-    endTimestamp: Math.floor(endOfDay.getTime() / 1000).toString(),
+    startTimestamp: Math.floor(startOfDay.getTime() / 1000),
+    endTimestamp: Math.floor(endOfDay.getTime() / 1000),
   };
 }
 
@@ -56,12 +60,22 @@ export function PriceRangeSelector({
 
   // Get timestamp range for the selected day
   const { startTimestamp, endTimestamp } = getDayTimestampRange(selectedDate);
-  
+
   // Fetch real bet data for the selected day
   const { data: betsData, loading: betsLoading } = useQuery(GET_BETS_FOR_DAY, {
     variables: { startTimestamp, endTimestamp },
     fetchPolicy: 'cache-and-network',
   });
+
+  // Calculate total volume for the day
+  const totalVolumeHbar = useMemo(() => {
+    if (betsLoading || !betsData?.bets) return 0;
+
+    console.log('Bets data:', betsData);
+    return betsData.bets.reduce((sum: number, bet: any) => {
+      return sum + parseFloat(formatTinybarsToHbar(bet.stake));
+    }, 0);
+  }, [betsData, betsLoading]);
 
   // Generate histogram data from real bet data
   const histogramData = useMemo(() => {
@@ -70,12 +84,12 @@ export function PriceRangeSelector({
       const buckets = 30;
       const bucketSize = (maxPrice - minPrice) / buckets;
       const data = [];
-      
+
       for (let i = 0; i < buckets; i++) {
         const bucketMin = minPrice + i * bucketSize;
         const bucketMax = bucketMin + bucketSize;
         const bucketCenter = (bucketMin + bucketMax) / 2;
-        
+
         data.push({
           min: bucketMin,
           max: bucketMax,
@@ -101,14 +115,14 @@ export function PriceRangeSelector({
       const betsInBucket = betsData.bets.filter((bet: any) => {
         const betMinPrice = parseFloat(bet.priceMin) / 10000; // Convert from basis points
         const betMaxPrice = parseFloat(bet.priceMax) / 10000;
-        
+
         // Check if bet price range overlaps with bucket
-        return (betMinPrice <= bucketMax && betMaxPrice >= bucketMin);
+        return betMinPrice <= bucketMax && betMaxPrice >= bucketMin;
       });
 
       // Sum up stakes for bets in this bucket
       const totalStakeInBucket = betsInBucket.reduce((sum: number, bet: any) => {
-        return sum + parseFloat(bet.stake) / 1e18; // Convert from wei to HBAR
+        return sum + parseFloat(formatTinybarsToHbar(bet.stake));
       }, 0);
 
       data.push({
@@ -197,7 +211,8 @@ export function PriceRangeSelector({
         <h3 className="text-sm font-medium text-medium-gray">Current bets</h3>
 
         <span className="text-sm text-medium-gray">
-          Total bets: {totalBets.toLocaleString()} HBAR
+          Total volume: {totalVolumeHbar.toLocaleString(undefined, { maximumFractionDigits: 2 })}{' '}
+          HBAR
         </span>
       </div>
 
