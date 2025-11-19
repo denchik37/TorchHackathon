@@ -1,12 +1,14 @@
 'use client';
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   useWallet,
   useEvmAddress,
   useWriteContract,
   useWatchTransactionReceipt,
+  useReadContract,
 } from '@buidlerlabs/hashgraph-react-wallets';
 import { HashpackConnector } from '@buidlerlabs/hashgraph-react-wallets/connectors';
+import { ContractId } from '@hashgraph/sdk';
 import { gql, useQuery } from '@apollo/client';
 
 import { User, Bet } from '@/lib/types';
@@ -50,10 +52,19 @@ type Data = {
   user: User;
 };
 
+const getActualBetStatus = (bet: any, field: 'finalized' | 'won' | 'claimed') => {
+  return bet.contractData?.[field] ?? bet[field];
+};
+
 const getBetStatus = (bet: Bet): 'active' | 'won' | 'lost' | 'unredeemed' => {
-  if (!bet.finalized) return 'active';
-  if (bet.won && !bet.claimed && bet.bucketRef?.aggregationComplete === true) return 'unredeemed';
-  if (bet.won) return 'won';
+  // Use contract data if available, otherwise fall back to subgraph data
+  const finalized = getActualBetStatus(bet, 'finalized');
+  const won = getActualBetStatus(bet, 'won');
+  const claimed = getActualBetStatus(bet, 'claimed');
+
+  if (!finalized) return 'active';
+  if (won && !claimed && bet.bucketRef?.aggregationComplete === true) return 'unredeemed';
+  if (won) return 'won';
   return 'lost';
 };
 
@@ -62,9 +73,36 @@ export default function MyBetsPage() {
   const { isConnected } = useWallet(HashpackConnector);
   const [activeCategory, setActiveCategory] = useState('all');
   const [redeemingBetId, setRedeemingBetId] = useState<string | null>(null);
+  const [contractBetData, setContractBetData] = useState<Record<string, any>>({});
 
   const { writeContract } = useWriteContract();
+  const { readContract } = useReadContract();
   const { watch } = useWatchTransactionReceipt();
+
+  // Fetch bet data from smart contract
+  const fetchBetFromContract = async (betId: string) => {
+    try {
+      const contractId = ContractId.fromString(process.env.NEXT_PUBLIC_CONTRACT_ID!);
+      const contractData = await readContract({
+        address: `0x${contractId.toSolidityAddress()}`,
+        abi: TorchPredictionMarketABI.abi,
+        functionName: 'getBet',
+        args: [betId],
+      });
+
+      console.log(`Fetched bet ${betId} from contract:`, contractData);
+
+      setContractBetData((prev) => ({
+        ...prev,
+        [betId]: contractData,
+      }));
+
+      return contractData;
+    } catch (error) {
+      console.error(`Error fetching bet ${betId} from contract:`, error);
+      return null;
+    }
+  };
 
   const { data, loading, refetch } = useQuery<Data>(GET_USER, {
     variables: { id: evmAddress },
@@ -73,18 +111,46 @@ export default function MyBetsPage() {
   const user = data?.user;
   const bets = user?.bets ?? [];
 
-  const wonBets = bets.filter((bet) => bet.won);
-  const lostBets = bets.filter((bet) => !bet.won && bet.finalized);
-  const unredeemedBets = bets.filter(
-    (bet) => bet.finalized && !bet.claimed && bet.bucketRef?.aggregationComplete === true
-  );
+  // Fetch all bet data from contracts when bets change
+  useEffect(() => {
+    if (bets.length > 0) {
+      bets.forEach((bet) => {
+        console.log('Checking bet for contract fetch:', bet);
+        if (!contractBetData[bet.id]) {
+          fetchBetFromContract(bet.id);
+        }
+      });
+    }
+  }, [bets]);
+
+  // Create enhanced bets with contract data
+  const enhancedBets = bets.map((bet) => ({
+    ...bet,
+    contractData: contractBetData[bet.id],
+  }));
+
+  const wonBets = enhancedBets.filter((bet) => {
+    return getActualBetStatus(bet, 'won');
+  });
+
+  const lostBets = enhancedBets.filter((bet) => {
+    return !getActualBetStatus(bet, 'won') && getActualBetStatus(bet, 'finalized');
+  });
+
+  const unredeemedBets = enhancedBets.filter((bet) => {
+    return (
+      getActualBetStatus(bet, 'finalized') &&
+      !getActualBetStatus(bet, 'claimed') &&
+      bet.bucketRef?.aggregationComplete === true
+    );
+  });
 
   const categories = [
-    { id: 'all', label: 'All Bets', count: bets.length },
+    { id: 'all', label: 'All Bets', count: enhancedBets.length },
     {
       id: 'active',
       label: 'Active',
-      count: bets.filter((bet) => !bet.finalized).length,
+      count: enhancedBets.filter((bet) => !getActualBetStatus(bet, 'finalized')).length,
     },
     {
       id: 'unredeemed',
@@ -94,11 +160,11 @@ export default function MyBetsPage() {
     {
       id: 'complete',
       label: 'Complete',
-      count: bets.filter((bet) => bet.finalized).length,
+      count: enhancedBets.filter((bet) => getActualBetStatus(bet, 'finalized')).length,
     },
   ];
 
-  const filteredBets = bets.filter((bet) => {
+  const filteredBets = enhancedBets.filter((bet) => {
     const status = getBetStatus(bet);
     return activeCategory === 'all' || status === activeCategory;
   });
@@ -172,7 +238,9 @@ export default function MyBetsPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <Card className="bg-neutral-950 border-neutral-800">
                     <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-light-gray">{bets.length}</div>
+                      <div className="text-2xl font-bold text-light-gray">
+                        {enhancedBets.length}
+                      </div>
                       <div className="text-xs text-medium-gray">Total Bets</div>
                     </CardContent>
                   </Card>
@@ -191,7 +259,7 @@ export default function MyBetsPage() {
                   <Card className="bg-neutral-950 border-vibrant-purple/20">
                     <CardContent className="p-4">
                       <div className="text-2xl font-bold text-vibrant-purple">
-                        {bets.filter((bet) => !bet.finalized).length}
+                        {enhancedBets.filter((bet) => !getActualBetStatus(bet, 'finalized')).length}
                       </div>
                       <div className="text-xs text-medium-gray">Active</div>
                     </CardContent>
