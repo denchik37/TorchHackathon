@@ -3,7 +3,7 @@
 import { gql, useQuery } from '@apollo/client';
 import { useEffect, useState } from 'react';
 import { ClerkProvider, SignInButton, SignOutButton, useUser } from '@clerk/nextjs';
-import { useWallet, useWriteContract } from '@buidlerlabs/hashgraph-react-wallets';
+import { useWallet, useWriteContract, useWatchTransactionReceipt } from '@buidlerlabs/hashgraph-react-wallets';
 import { parseUnits } from 'ethers/lib/utils';
 import { Calendar, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 
@@ -33,6 +33,7 @@ const GET_BETS = gql`
       priceMax
       timestamp
       targetTimestamp
+      bucket
     }
   }
 `;
@@ -52,7 +53,8 @@ function AdminPage() {
   // Wallet connection
   const { isConnected } = useWallet();
   const { writeContract } = useWriteContract();
-  
+  const { watch } = useWatchTransactionReceipt();
+
   // Toast notifications
   const { toast } = useToast();
 
@@ -89,11 +91,13 @@ function AdminPage() {
 
     const fetchPrices = async () => {
       try {
-        const timestamps = data.bets.map((bet: Bet) => bet.timestamp);
+        const timestamps = data.bets.map((bet: Bet) => bet.targetTimestamp);
+
         const start = Math.min(...timestamps);
         const end = Math.max(...timestamps);
 
         const { usd: prices } = await fetchHbarPriceAtTimestamp(start, end);
+
         setResolutionPrices(prices);
       } catch (err) {
         console.error('Error fetching prices:', err);
@@ -125,10 +129,12 @@ function AdminPage() {
   // Get final price (manual override or fetched)
   const getFinalPrice = (timestamp: number): number | null => {
     const manualPrice = manualPrices.get(timestamp);
+
     if (manualPrice !== undefined) {
       const parsed = parseFloat(manualPrice);
       return isNaN(parsed) ? null : parsed;
     }
+
     return findClosestPrice(timestamp);
   };
 
@@ -167,6 +173,7 @@ function AdminPage() {
 
       if (timestampsWithPrices.length === 0) {
         alert('No prices to submit');
+        setIsSubmitting(false);
         return;
       }
 
@@ -177,29 +184,95 @@ function AdminPage() {
         return parseUnits(price.toFixed(8), 8).toString();
       });
 
-      await writeContract({
+      // Get unique bucket indices from bets data
+      const uniqueBuckets = Array.from(
+        new Set(data.bets.map((bet: Bet) => bet.bucket))
+      );
+
+      // Submit prices first
+      const setPricesResult = await writeContract({
         contractId: process.env.NEXT_PUBLIC_CONTRACT_ID!,
         abi: TorchPredictionMarketABI.abi,
         functionName: 'setPricesForTimestamps',
         args: [timestamps, prices],
       });
 
-      setManualPrices(new Map());
-      
-      toast({
-        variant: "success",
-        title: "Prices submitted successfully!",
-        description: `Successfully submitted ${timestampsWithPrices.length} price${timestampsWithPrices.length === 1 ? '' : 's'} to the contract.`,
+      // Watch the setPrices transaction
+      watch(setPricesResult as string, {
+        onSuccess: (transaction) => {
+          // Process batches after price submission succeeds
+          const processBatches = async () => {
+            try {
+              // Process each unique bucket after price submission succeeds
+              for (const bucketIndex of uniqueBuckets) {
+                const processBatchResult = await writeContract({
+                  contractId: process.env.NEXT_PUBLIC_CONTRACT_ID!,
+                  abi: TorchPredictionMarketABI.abi,
+                  functionName: 'processBatch',
+                  args: [bucketIndex],
+                });
+
+                // Watch each processBatch transaction
+                watch(processBatchResult as string, {
+                  onSuccess: (batchTransaction) => {
+                    return batchTransaction;
+                  },
+                  onError: (receipt, error) => {
+                    console.error(`Error processing batch ${bucketIndex}:`, error);
+                    toast({
+                      variant: 'destructive',
+                      title: `Failed to process batch ${bucketIndex}`,
+                      description: typeof error === 'string' ? error : 'An unexpected error occurred.',
+                    });
+                    return receipt;
+                  },
+                });
+              }
+
+              setManualPrices(new Map());
+              setIsSubmitting(false);
+
+              toast({
+                variant: 'success',
+                title: 'Prices submitted and batches processed!',
+                description: `Successfully submitted ${timestampsWithPrices.length} price${timestampsWithPrices.length === 1 ? '' : 's'} and processed ${uniqueBuckets.length} bucket${uniqueBuckets.length === 1 ? '' : 's'}.`,
+              });
+            } catch (batchError) {
+              console.error('Error processing batches:', batchError);
+              setIsSubmitting(false);
+              toast({
+                variant: 'destructive',
+                title: 'Prices submitted but batch processing failed',
+                description: batchError instanceof Error ? batchError.message : 'Failed to process some batches.',
+              });
+            }
+          };
+          
+          processBatches();
+          return transaction;
+        },
+        onError: (receipt, error) => {
+          setIsSubmitting(false);
+          console.error('Error submitting prices:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Failed to submit prices',
+            description: typeof error === 'string' ? error : 'An unexpected error occurred while submitting prices.',
+          });
+          return receipt;
+        },
       });
     } catch (err) {
       console.error('Error submitting prices:', err);
-      toast({
-        variant: "destructive",
-        title: "Failed to submit prices",
-        description: err instanceof Error ? err.message : "An unexpected error occurred while submitting prices.",
-      });
-    } finally {
       setIsSubmitting(false);
+      toast({
+        variant: 'destructive',
+        title: 'Failed to submit prices',
+        description:
+          err instanceof Error
+            ? err.message
+            : 'An unexpected error occurred while submitting prices.',
+      });
     }
   };
 
@@ -507,7 +580,7 @@ function AdminPage() {
                 </tbody>
               </table>
             </div>
-{data?.bets && data.bets.length > 0 && (
+            {data?.bets && data.bets.length > 0 && (
               <div className="flex justify-end mt-4">
                 <Button
                   variant="torch"
