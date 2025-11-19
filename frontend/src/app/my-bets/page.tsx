@@ -11,11 +11,7 @@ import { gql, useQuery } from '@apollo/client';
 import { CheckCircle, XCircle, Clock, Coins, Loader2 } from 'lucide-react';
 
 import { User, Bet } from '@/lib/types';
-import {
-  formatDateUTC,
-  getRemainingDaysBetweenTimestamps,
-  formatTinybarsToHbar,
-} from '@/lib/utils';
+import { formatDateUTC, getRemainingDaysFromNow, formatTinybarsToHbar } from '@/lib/utils';
 import TorchPredictionMarketABI from '../../../abi/TorchPredictionMarket.json';
 
 import { Button } from '@/components/ui/button';
@@ -108,7 +104,9 @@ export default function MyBetsPage() {
 
   const wonBets = bets.filter((bet) => bet.won);
   const lostBets = bets.filter((bet) => !bet.won && bet.finalized);
-  const unredeemedBets = bets.filter((bet) => bet.finalized && !bet.claimed && bet.bucketRef?.aggregationComplete === true);
+  const unredeemedBets = bets.filter(
+    (bet) => bet.finalized && !bet.claimed && bet.bucketRef?.aggregationComplete === true
+  );
   const unredeemedAmount = unredeemedBets.reduce((sum, bet) => sum + bet.payout || 0, 0);
 
   const categories = [
@@ -172,7 +170,10 @@ export default function MyBetsPage() {
       setRedeemingAll(true);
 
       // Process each unredeemed bet that is won
-      const unredeemedWonBets = bets.filter((bet) => bet.finalized && !bet.claimed && bet.won && bet.bucketRef?.aggregationComplete === true);
+      const unredeemedWonBets = bets.filter(
+        (bet) =>
+          bet.finalized && !bet.claimed && bet.won && bet.bucketRef?.aggregationComplete === true
+      );
 
       let processedCount = 0;
       let errorCount = 0;
@@ -358,10 +359,7 @@ export default function MyBetsPage() {
                   ) : (
                     filteredBets.map((bet) => {
                       const status = getBetStatus(bet);
-                      const remainingDays = getRemainingDaysBetweenTimestamps(
-                        bet.timestamp,
-                        bet.targetTimestamp
-                      );
+                      const remainingDays = getRemainingDaysFromNow(bet.targetTimestamp);
 
                       return (
                         <Card key={bet.id} className="bg-neutral-950 border-neutral-800">
@@ -474,9 +472,7 @@ export default function MyBetsPage() {
                               <span className="text-xs text-medium-gray">
                                 Placed: {formatDateUTC(bet.timestamp)}
                               </span>
-                              <span className="text-xs text-medium-gray">
-                                Bet ID: {bet.id.slice(0, 8)}...
-                              </span>
+                              <span className="text-xs text-medium-gray">Bet ID: {bet.id}</span>
                             </div>
                           </CardContent>
                         </Card>

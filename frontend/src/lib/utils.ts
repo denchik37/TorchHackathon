@@ -50,3 +50,12 @@ export function getRemainingDaysBetweenTimestamps(startTimestamp: number, endTim
   const msInDay = 1000 * 60 * 60 * 24;
   return Math.ceil(diffMs / msInDay);
 }
+
+export function getRemainingDaysFromNow(targetTimestamp: number) {
+  const nowMs = Date.now();
+  const targetMs = Number(targetTimestamp) * 1000;
+  const diffMs = targetMs - nowMs;
+
+  const msInDay = 1000 * 60 * 60 * 24;
+  return Math.max(0, Math.ceil(diffMs / msInDay));
+}
