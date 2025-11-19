@@ -181,24 +181,21 @@ export default function MyBetsPage() {
         args: [betId],
       });
 
-      // Optimistic update - immediately mark as claimed
-      setContractBetData((prev) => ({
-        ...prev,
-        [betId]: {
-          ...prev[betId],
-          claimed: true,
-        },
-      }));
-
       watch(txId as string, {
         onSuccess: (transaction) => {
-          console.log(`Successfully redeemed bet ${betId}`);
           setRedeemingBetId(null);
+
+          setContractBetData((prev) => ({
+            ...prev,
+            [betId]: {
+              ...prev[betId],
+              claimed: true,
+            },
+          }));
+
           return transaction;
         },
         onError: (receipt, error) => {
-          console.error(`Failed to redeem bet ${betId}:`, error);
-          // Revert optimistic update on error
           setContractBetData((prev) => ({
             ...prev,
             [betId]: {
@@ -211,7 +208,6 @@ export default function MyBetsPage() {
         },
       });
     } catch (error) {
-      console.error('Error redeeming bet:', error);
       setRedeemingBetId(null);
     }
   };
