@@ -11,7 +11,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 const LIMIT = 10;
 const GET_BETS = gql`
   query GetBets($first: Int!, $skip: Int!) {
-    bets(first: $first, skip: $skip, orderBy: targetTimestamp, orderDirection: desc) {
+    bets(first: $first, skip: $skip, orderBy: timestamp, orderDirection: desc) {
       id
       user {
         id
