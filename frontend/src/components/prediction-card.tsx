@@ -703,7 +703,6 @@ export function PredictionCard({ className }: PredictionCardProps) {
       <BetPlacingModal
         isOpen={isPlacingBet}
         onClose={closeBetPlacingModal}
-        onViewExplorer={handleViewExplorer}
       />
 
       {/* Bet Placed Modal */}
