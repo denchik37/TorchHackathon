@@ -3,7 +3,11 @@
 import { gql, useQuery } from '@apollo/client';
 import { useEffect, useState } from 'react';
 import { ClerkProvider, SignInButton, SignOutButton, useUser } from '@clerk/nextjs';
-import { useWallet, useWriteContract, useWatchTransactionReceipt } from '@buidlerlabs/hashgraph-react-wallets';
+import {
+  useWallet,
+  useWriteContract,
+  useWatchTransactionReceipt,
+} from '@buidlerlabs/hashgraph-react-wallets';
 import { parseUnits } from 'ethers/lib/utils';
 import { Calendar, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 
@@ -185,9 +189,7 @@ function AdminPage() {
       });
 
       // Get unique bucket indices from bets data
-      const uniqueBuckets = Array.from(
-        new Set(data.bets.map((bet: Bet) => bet.bucket))
-      );
+      const uniqueBuckets = Array.from(new Set(data.bets.map((bet: Bet) => bet.bucket)));
 
       // Submit prices first
       const setPricesResult = await writeContract({
@@ -195,6 +197,9 @@ function AdminPage() {
         abi: TorchPredictionMarketABI.abi,
         functionName: 'setPricesForTimestamps',
         args: [timestamps, prices],
+        metaArgs: {
+          gas: 3000000, // 0.3 HBAR gas limit for setting prices
+        },
       });
 
       // Watch the setPrices transaction
@@ -210,6 +215,9 @@ function AdminPage() {
                   abi: TorchPredictionMarketABI.abi,
                   functionName: 'processBatch',
                   args: [bucketIndex],
+                  metaArgs: {
+                    gas: 3000000, // 0.3 HBAR gas limit for batch processing
+                  },
                 });
 
                 // Watch each processBatch transaction
@@ -222,7 +230,8 @@ function AdminPage() {
                     toast({
                       variant: 'destructive',
                       title: `Failed to process batch ${bucketIndex}`,
-                      description: typeof error === 'string' ? error : 'An unexpected error occurred.',
+                      description:
+                        typeof error === 'string' ? error : 'An unexpected error occurred.',
                     });
                     return receipt;
                   },
@@ -243,11 +252,14 @@ function AdminPage() {
               toast({
                 variant: 'destructive',
                 title: 'Prices submitted but batch processing failed',
-                description: batchError instanceof Error ? batchError.message : 'Failed to process some batches.',
+                description:
+                  batchError instanceof Error
+                    ? batchError.message
+                    : 'Failed to process some batches.',
               });
             }
           };
-          
+
           processBatches();
           return transaction;
         },
@@ -257,7 +269,10 @@ function AdminPage() {
           toast({
             variant: 'destructive',
             title: 'Failed to submit prices',
-            description: typeof error === 'string' ? error : 'An unexpected error occurred while submitting prices.',
+            description:
+              typeof error === 'string'
+                ? error
+                : 'An unexpected error occurred while submitting prices.',
           });
           return receipt;
         },
