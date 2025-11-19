@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 interface BetPlacingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onViewExplorer: () => void;
 }
 
 export function BetPlacingModal({ isOpen, onClose, onViewExplorer }: BetPlacingModalProps) {
@@ -39,14 +38,6 @@ export function BetPlacingModal({ isOpen, onClose, onViewExplorer }: BetPlacingM
           <p>It takes a couple of minutes to complete.</p>
         </div>
 
-        {/* View in Explorer Button */}
-        <Button
-          onClick={onViewExplorer}
-          className="w-full bg-gray-700 hover:bg-gray-600 text-white"
-          variant="outline"
-        >
-          View in explorer
-        </Button>
       </div>
     </div>
   );
