@@ -389,7 +389,7 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(({
       .attr('text-anchor', 'middle')
       .attr('x', width / 2)
       .attr('y', height + margin.bottom - 8)
-      .text('Target Date')
+      .text('Resolution time')
       .attr('fill', '#9CA3AF')
       .attr('font-size', '12px')
       .attr('font-weight', '600');
@@ -400,7 +400,7 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(({
       .attr('transform', 'rotate(-90)')
       .attr('x', -height / 2)
       .attr('y', -margin.left + 18)
-      .text('Price (USD)')
+      .text('HBAR price')
       .attr('fill', '#9CA3AF')
       .attr('font-size', '12px')
       .attr('font-weight', '600');
@@ -620,7 +620,7 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(({
     <div className={cn('w-full', className)}>
       <div className="flex items-center justify-between mb-3">
         <div className="text-sm text-neutral-400 font-medium">
-          Enhanced Price Prediction Distribution
+          HBAR price × time probability
         </div>
         <div className="flex items-center gap-2">
           {enableZoom && showControls && (
