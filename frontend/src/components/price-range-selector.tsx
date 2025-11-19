@@ -82,60 +82,80 @@ export function PriceRangeSelector({
     }, 0);
   }, [betsData, betsLoading]);
 
-  // Generate histogram data from real bet data
+  // Generate Torch Confidence Chart data - 31-bin confidence distribution
   const histogramData = useMemo(() => {
+    const bins = 31; // Torch specification: 31 bins
+    const binSize = (maxPrice - minPrice) / bins;
+    
     if (betsLoading || !betsData?.bets) {
       // Show loading placeholder
-      const buckets = 30;
-      const bucketSize = (maxPrice - minPrice) / buckets;
       const data = [];
-
-      for (let i = 0; i < buckets; i++) {
-        const bucketMin = minPrice + i * bucketSize;
-        const bucketMax = bucketMin + bucketSize;
-        const bucketCenter = (bucketMin + bucketMax) / 2;
+      for (let i = 0; i < bins; i++) {
+        const binMin = minPrice + i * binSize;
+        const binMax = binMin + binSize;
+        const center = (binMin + binMax) / 2;
 
         data.push({
-          min: bucketMin,
-          max: bucketMax,
-          center: bucketCenter,
-          amount: 0,
-          isSelected: bucketCenter >= selectedMin && bucketCenter <= selectedMax,
+          min: binMin,
+          max: binMax,
+          center,
+          prob: 0, // confidence score (height)
+          totalStake: 0, // money supporting this region
+          rawScore: 0, // unnormalized influence
+          amount: 0, // for backward compatibility
+          isSelected: center >= selectedMin && center <= selectedMax,
         });
       }
       return data;
     }
 
-    // Process real bet data into histogram buckets
-    const buckets = 30;
-    const bucketSize = (maxPrice - minPrice) / buckets;
+    // Calculate confidence distribution based on all active bets
     const data = [];
+    const totalStakeAcrossAllBets = betsData.bets.reduce((sum: number, bet: any) => {
+      return sum + parseFloat(formatTinybarsToHbar(bet.stake));
+    }, 0);
 
-    for (let i = 0; i < buckets; i++) {
-      const bucketMin = minPrice + i * bucketSize;
-      const bucketMax = bucketMin + bucketSize;
-      const bucketCenter = (bucketMin + bucketMax) / 2;
+    for (let i = 0; i < bins; i++) {
+      const binMin = minPrice + i * binSize;
+      const binMax = binMin + binSize;
+      const center = (binMin + binMax) / 2;
 
-      // Find bets that overlap with this price bucket
-      const betsInBucket = betsData.bets.filter((bet: any) => {
-        const betMinPrice = parseFloat(formatTinybarsToHbar(bet.priceMin)); // Use same conversion as other components
+      // Find bets that overlap with this price bin
+      const betsInBin = betsData.bets.filter((bet: any) => {
+        const betMinPrice = parseFloat(formatTinybarsToHbar(bet.priceMin));
         const betMaxPrice = parseFloat(formatTinybarsToHbar(bet.priceMax));
-
-        // Check if bet price range overlaps with bucket
-        return betMinPrice <= bucketMax && betMaxPrice >= bucketMin;
+        return betMinPrice <= binMax && betMaxPrice >= binMin;
       });
 
-      // Sum up stakes for bets in this bucket
-      const totalStakeInBucket = betsInBucket.reduce((sum: number, bet: any) => {
-        return sum + parseFloat(formatTinybarsToHbar(bet.stake));
+      // Calculate confidence metrics for this bin
+      const totalStakeInBin = betsInBin.reduce((sum: number, bet: any) => {
+        const stake = parseFloat(formatTinybarsToHbar(bet.stake));
+        const betMinPrice = parseFloat(formatTinybarsToHbar(bet.priceMin));
+        const betMaxPrice = parseFloat(formatTinybarsToHbar(bet.priceMax));
+        
+        // Weight stake by overlap with bin (more precise confidence calculation)
+        const overlapMin = Math.max(binMin, betMinPrice);
+        const overlapMax = Math.min(binMax, betMaxPrice);
+        const overlapRatio = Math.max(0, (overlapMax - overlapMin) / (betMaxPrice - betMinPrice));
+        
+        return sum + (stake * overlapRatio);
       }, 0);
 
+      // Raw score - unnormalized influence
+      const rawScore = totalStakeInBin;
+      
+      // Confidence probability - normalized by total market stake
+      const prob = totalStakeAcrossAllBets > 0 ? (totalStakeInBin / totalStakeAcrossAllBets) : 0;
+
       data.push({
-        min: bucketMin,
-        max: bucketMax,
-        center: bucketCenter,
-        amount: totalStakeInBucket,
-        isSelected: true,
+        min: binMin,
+        max: binMax,
+        center,
+        prob, // confidence score (height of bar)
+        totalStake: totalStakeInBin, // money supporting this region
+        rawScore, // unnormalized influence
+        amount: totalStakeInBin, // for backward compatibility
+        isSelected: center >= selectedMin && center <= selectedMax,
       });
     }
 
@@ -143,6 +163,7 @@ export function PriceRangeSelector({
   }, [minPrice, maxPrice, selectedMin, selectedMax, betsData, betsLoading]);
 
   const maxBetAmount = Math.max(...histogramData.map((d) => d.amount));
+  const maxProb = Math.max(...histogramData.map((d) => d.prob));
 
   const handleMinChange = (value: number) => {
     // Allow values below minPrice for user flexibility
@@ -228,18 +249,20 @@ export function PriceRangeSelector({
 
       {/* Histogram */}
       <div ref={containerRef} className="relative h-40 bg-neutral-900 rounded-lg  cursor-crosshair">
-        {/* Histogram bars */}
+        {/* Confidence distribution bars - 31 bins */}
         <div className="flex items-end justify-between h-full space-x-0.5">
-          {histogramData.map((bucket, index) => (
+          {histogramData.map((bin, index) => (
             <div
               key={index}
               className={cn('flex-1 bg-[#3B2D72] rounded-t transition-all duration-200')}
               style={{
-                height: `${bucket.amount > 0 ? Math.max(8, (bucket.amount / maxBetAmount) * 100) : 0}%`,
+                height: `${bin.prob > 0 ? Math.max(8, (bin.prob / maxProb) * 100) : 0}%`,
+                opacity: bin.isSelected ? 1 : 0.7,
               }}
             />
           ))}
         </div>
+
 
         {/* Current price indicator */}
         <div
