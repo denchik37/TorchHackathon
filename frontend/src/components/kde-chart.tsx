@@ -604,11 +604,11 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(({
       const priceVal = currentY.invert(pointerY);
 
       const timeFormat = d3.timeFormat('%b %d, %Y at %I:%M %p');
-      let metricsHtml = `<div class="font-semibold text-neutral-200 mb-3">Live Analysis</div>`;
+      let metricsHtml = `<div class="font-semibold text-neutral-200 mb-3">Predicted probability</div>`;
       metricsHtml += `<div class="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-xs">
-        <span class="font-medium text-neutral-400">Cursor Date:</span> 
+        <span class="font-medium text-neutral-400">Date:</span> 
         <span class="text-right font-mono">${timeFormat(timeVal)}</span>
-        <span class="font-medium text-neutral-400">Cursor Price:</span> 
+        <span class="font-medium text-neutral-400">Price:</span> 
         <span class="text-right font-mono">$${priceVal.toFixed(4)}</span>
       </div>`;
       
