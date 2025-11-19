@@ -433,12 +433,14 @@ export default function MyBetsPage() {
 
                               {/* Right side - Status and actions */}
                               <div className="flex flex-col justify-between items-end">
-                                {status === 'active' && remainingDays && (
+                                {status === 'active' && (
                                   <div className="text-right">
                                     <div className="text-2xl font-bold text-light-gray">
-                                      {remainingDays}
+                                      {remainingDays === 0 ? 'Today' : remainingDays}
                                     </div>
-                                    <div className="text-xs text-medium-gray">days remaining</div>
+                                    <div className="text-xs text-medium-gray">
+                                      {remainingDays === 0 ? 'resolves today' : 'days remaining'}
+                                    </div>
                                   </div>
                                 )}
 
