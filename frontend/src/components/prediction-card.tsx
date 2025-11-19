@@ -690,7 +690,7 @@ export function PredictionCard({ className }: PredictionCardProps) {
           </TabsContent>
 
           <TabsContent value="forecast" className="space-y-4">
-            <KDEChart currentPrice={currentPrice} className="h-80" />
+            <KDEChart currentPrice={currentPrice} className="h-96 p-8" />
           </TabsContent>
 
           <TabsContent value="history">
@@ -700,10 +700,7 @@ export function PredictionCard({ className }: PredictionCardProps) {
       </CardContent>
 
       {/* Bet Placing Modal */}
-      <BetPlacingModal
-        isOpen={isPlacingBet}
-        onClose={closeBetPlacingModal}
-      />
+      <BetPlacingModal isOpen={isPlacingBet} onClose={closeBetPlacingModal} />
 
       {/* Bet Placed Modal */}
       <BetPlacedModal
