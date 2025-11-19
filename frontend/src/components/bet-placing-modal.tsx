@@ -9,7 +9,7 @@ interface BetPlacingModalProps {
   onClose: () => void;
 }
 
-export function BetPlacingModal({ isOpen, onClose, onViewExplorer }: BetPlacingModalProps) {
+export function BetPlacingModal({ isOpen, onClose }: BetPlacingModalProps) {
   if (!isOpen) return null;
 
   return (
