@@ -15,6 +15,8 @@ import { fetchHbarPriceAtTimestamp, type CoinGeckoResponse } from '@/lib/coingec
 import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { useToast } from '@/components/ui/useToast';
+import { Toaster } from '@/components/ui/toaster';
 import NoWalletConnectedContainer from '@/components/no-wallet-connected-container';
 import TorchPredictionMarketABI from '../../../abi/TorchPredictionMarket.json';
 
@@ -50,6 +52,9 @@ function AdminPage() {
   // Wallet connection
   const { isConnected } = useWallet();
   const { writeContract } = useWriteContract();
+  
+  // Toast notifications
+  const { toast } = useToast();
 
   // Date selection - default to today
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -180,8 +185,19 @@ function AdminPage() {
       });
 
       setManualPrices(new Map());
+      
+      toast({
+        variant: "success",
+        title: "Prices submitted successfully!",
+        description: `Successfully submitted ${timestampsWithPrices.length} price${timestampsWithPrices.length === 1 ? '' : 's'} to the contract.`,
+      });
     } catch (err) {
       console.error('Error submitting prices:', err);
+      toast({
+        variant: "destructive",
+        title: "Failed to submit prices",
+        description: err instanceof Error ? err.message : "An unexpected error occurred while submitting prices.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -491,7 +507,7 @@ function AdminPage() {
                 </tbody>
               </table>
             </div>
-            {data?.bets && data.bets.length > 0 && (
+{data?.bets && data.bets.length > 0 && (
               <div className="flex justify-end mt-4">
                 <Button
                   variant="torch"
@@ -506,6 +522,7 @@ function AdminPage() {
           </CardContent>
         </Card>
       </main>
+      <Toaster />
     </div>
   );
 }
