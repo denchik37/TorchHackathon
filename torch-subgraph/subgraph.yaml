@@ -35,4 +35,6 @@ dataSources:
           handler: handleFeeCollected
         - event: AggregationCompleted(indexed uint256,uint256)
           handler: handleAggregationCompleted
+        - event: BucketPriceSet(indexed uint256,uint256)
+          handler: handleBucketPriceSet
       file: ./src/mappings.ts
