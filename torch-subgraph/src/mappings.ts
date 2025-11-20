@@ -99,19 +99,18 @@ export function handleBetFinalized(event: BetFinalized): void {
   bet.finalized = true
   bet.actualPrice = event.params.actualPrice
   bet.won = event.params.won
-  bet.payout = event.params.payout ? event.params.payout : BigInt.zero()
+  bet.payout = event.params.payout != null ? event.params.payout! : BigInt.zero()
   bet.save()
 
-   if (bet.won) {
+  if (bet.won) {
     let stats = UserStats.load(bet.user)
     if (stats) {
       stats.totalWon += 1
-      let payout = bet.payout ? bet.payout : BigInt.zero()
-      stats.totalPayout = stats.totalPayout.plus(payout)
+      let payoutNonNull = bet.payout != null ? bet.payout! : BigInt.zero()
+      stats.totalPayout = stats.totalPayout.plus(payoutNonNull)
       stats.save()
     }
   }
-
 }
 
 /** -------- Event: BetClaimed -------- */
@@ -124,8 +123,8 @@ export function handleBetClaimed(event: BetClaimed): void {
 
   let stats = UserStats.load(event.params.bettor.toHexString())
   if (stats) {
-    let payout = event.params.payout ? event.params.payout : BigInt.zero()
-    stats.totalPayout = stats.totalPayout.plus(payout)
+    let payoutNonNull = event.params.payout != null ? event.params.payout! : BigInt.zero()
+    stats.totalPayout = stats.totalPayout.plus(payoutNonNull)
     stats.save()
   }
 }
@@ -182,32 +181,34 @@ export function handleBatchProcessed(event: BatchProcessed): void {
     let betId = BigInt.fromI32(betIndex).toString()
     let bet = Bet.load(betId)
     if (!bet || bet.finalized) continue
-  
+
     let betResult = contract.try_getBet(BigInt.fromString(bet.id))
     if (betResult.reverted) continue
     let betData = betResult.value
-  
+
     bet.finalized = betData.finalized
     bet.actualPrice = betData.actualPrice
     bet.won = betData.won
-    bet.payout = betData.won && betData.weight ? betData.weight : BigInt.zero()
+    bet.payout = betData.won && betData.weight != null ? betData.weight! : BigInt.zero()
     bet.save()
-  
+
     if (bet.won) {
       let stats = UserStats.load(bet.user)
       if (stats) {
         stats.totalWon += 1
-        let payout = bet.payout ? bet.payout : BigInt.zero()
-        stats.totalPayout = stats.totalPayout.plus(payout)
+        let payoutNonNull = bet.payout != null ? bet.payout! : BigInt.zero()
+        stats.totalPayout = stats.totalPayout.plus(payoutNonNull)
         stats.save()
       }
     }
   }
-  
-  bucket.totalWinningWeight = bucket.totalWinningWeight.plus(
-    event.params.winningWeight ? event.params.winningWeight : BigInt.zero()
-  )
 
+  let winningWeightNonNull = event.params.winningWeight != null ? event.params.winningWeight! : BigInt.zero()
+  bucket.totalWinningWeight = bucket.totalWinningWeight.plus(winningWeightNonNull)
+  bucket.nextProcessIndex += event.params.processedCount.toI32()
+  if (bucket.nextProcessIndex >= bucket.totalBets) {
+    bucket.aggregationComplete = true
+  }
 
   bucket.save()
 }
