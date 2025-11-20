@@ -65,11 +65,18 @@ export function handleBetPlaced(event: BetPlaced): void {
     bucket.aggregationComplete = false
     bucket.totalWinningWeight = BigInt.zero()
     bucket.nextProcessIndex = 0
-    bucket.betIds = []  // store bet IDs manually
+    bucket.betIds = []
     bucket.price = null
   }
+  
+  // Safely append new betId
+  let betIds = bucket.betIds
+  if (!betIds) {
+    betIds = []
+  }
+  bucket.betIds = betIds.concat([betId])
+  
   bucket.totalBets += 1
-  bucket.betIds.push(betId) // <-- key change
   bucket.save()
 
   bet.bucket = event.params.bucket.toI32()
