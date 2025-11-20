@@ -496,6 +496,7 @@ function AdminPage() {
               <table className="min-w-[800px] w-full">
                 <thead>
                   <tr className="border-b border-border">
+                    <th className="text-left py-3 px-4 font-medium text-medium-gray">Bet ID</th>
                     <th className="text-left py-3 px-4 font-medium text-medium-gray">Bet Amount</th>
                     <th className="text-left py-3 px-4 font-medium text-medium-gray">Min price</th>
                     <th className="text-left py-3 px-4 font-medium text-medium-gray">Max price</th>
@@ -511,7 +512,7 @@ function AdminPage() {
                 <tbody className="max-h-[600px] overflow-y-auto">
                   {loading && (
                     <tr>
-                      <td colSpan={6} className="text-center py-12">
+                      <td colSpan={7} className="text-center py-12">
                         <div className="flex flex-col items-center space-y-2">
                           <div className="w-8 h-8 border-2 border-torch-purple border-t-transparent rounded-full animate-spin" />
                           <p className="text-medium-gray">Loading bets...</p>
@@ -522,7 +523,7 @@ function AdminPage() {
 
                   {!loading && (!data?.bets || data.bets.length === 0) && (
                     <tr>
-                      <td colSpan={6} className="text-center py-12">
+                      <td colSpan={7} className="text-center py-12">
                         <div className="flex flex-col items-center space-y-3">
                           <div className="w-16 h-16 bg-neutral-800 rounded-full flex items-center justify-center">
                             <svg
@@ -571,6 +572,9 @@ function AdminPage() {
 
                       return (
                         <tr key={key} className="border-b border-white/5 hover:bg-dark-slate/50">
+                          <td className="py-3 px-4 text-sm text-light-gray font-mono">
+                            {bet.id}
+                          </td>
                           <td className="py-3 px-4 text-sm text-light-gray">
                             {formatTinybarsToHbar(bet.stake)} HBAR
                           </td>
