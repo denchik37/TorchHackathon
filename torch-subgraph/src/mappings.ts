@@ -65,10 +65,11 @@ export function handleBetPlaced(event: BetPlaced): void {
     bucket.aggregationComplete = false
     bucket.totalWinningWeight = BigInt.zero()
     bucket.nextProcessIndex = 0
+    bucket.betIds = []  // store bet IDs manually
     bucket.price = null
-    bucket.save()
   }
   bucket.totalBets += 1
+  bucket.betIds.push(betId) // <-- key change
   bucket.save()
 
   bet.bucket = event.params.bucket.toI32()
@@ -107,23 +108,16 @@ export function handleBatchProcessed(event: BatchProcessed): void {
 
   let contract = TorchPredictionMarket.bind(event.address)
 
-  // Derived bet IDs from this bucket
-  let betEntities = bucket.bets  // ⚠ You cannot access this in AssemblyScript directly
-  // Instead, fetch all bets for this bucket from your entity store
-  // Or fetch from contract by IDs you stored in BetPlaced
   let startIndex = bucket.nextProcessIndex
   let endIndex = startIndex + event.params.processedCount.toI32()
 
+  // loop over stored bet IDs
   for (let i = startIndex; i < endIndex; i++) {
-    // Fetch the betId you stored on-chain during BetPlaced
-    let betIdResult = contract.try_getBetIdByBucketIndex(BigInt.fromI32(bucketId as i32), BigInt.fromI32(i))
-    if (betIdResult.reverted) continue
-    let betId = betIdResult.value.toString()
-
+    if (i >= bucket.betIds.length) break
+    let betId = bucket.betIds[i]
     let bet = Bet.load(betId)
     if (!bet) continue
 
-    // Update bet from contract
     let betResult = contract.try_getBet(BigInt.fromString(betId))
     if (betResult.reverted) continue
     let betData = betResult.value
@@ -142,7 +136,6 @@ export function handleBatchProcessed(event: BatchProcessed): void {
   if (bucket.nextProcessIndex >= bucket.totalBets) bucket.aggregationComplete = true
   bucket.save()
 }
-
 
 /** -------- Event: AggregationCompleted -------- */
 export function handleAggregationCompleted(event: AggregationCompleted): void {
@@ -189,6 +182,7 @@ export function handleBucketPriceSet(event: BucketPriceSet): void {
     bucket.totalWinningWeight = BigInt.zero()
     bucket.nextProcessIndex = 0
     bucket.aggregationComplete = false
+    bucket.betIds = []
   }
 
   bucket.price = event.params.price
