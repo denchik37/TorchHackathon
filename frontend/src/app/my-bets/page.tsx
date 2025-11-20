@@ -85,6 +85,7 @@ export default function MyBetsPage() {
   const unredeemedBets = bets.filter((bet) => {
     return (
       bet.finalized &&
+      bet.won &&
       !bet.claimed &&
       bet.bucketRef?.aggregationComplete === true
     );
@@ -105,14 +106,19 @@ export default function MyBetsPage() {
     {
       id: 'complete',
       label: 'Complete',
-      count: bets.filter((bet) => bet.finalized).length,
+      count: bets.filter((bet) => 
+        bet.finalized && 
+        (!bet.won || bet.claimed)
+      ).length,
     },
   ];
 
   const filteredBets = bets.filter((bet) => {
     const status = getBetStatus(bet);
     if (activeCategory === 'all') return true;
-    if (activeCategory === 'complete') return bet.finalized;
+    if (activeCategory === 'complete') {
+      return bet.finalized && (!bet.won || bet.claimed);
+    }
     return status === activeCategory;
   });
 
