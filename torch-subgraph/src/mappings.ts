@@ -107,19 +107,26 @@ export function handleBatchProcessed(event: BatchProcessed): void {
 
   let contract = TorchPredictionMarket.bind(event.address)
 
-  // Use nextProcessIndex to loop over bet IDs in the contract
+  // Derived bet IDs from this bucket
+  let betEntities = bucket.bets  // ⚠ You cannot access this in AssemblyScript directly
+  // Instead, fetch all bets for this bucket from your entity store
+  // Or fetch from contract by IDs you stored in BetPlaced
   let startIndex = bucket.nextProcessIndex
   let endIndex = startIndex + event.params.processedCount.toI32()
 
   for (let i = startIndex; i < endIndex; i++) {
-    // Use contract to get bet data
-    let betResult = contract.try_getBet(BigInt.fromI32(i))
-    if (betResult.reverted) continue
-    let betData = betResult.value
+    // Fetch the betId you stored on-chain during BetPlaced
+    let betIdResult = contract.try_getBetIdByBucketIndex(BigInt.fromI32(bucketId as i32), BigInt.fromI32(i))
+    if (betIdResult.reverted) continue
+    let betId = betIdResult.value.toString()
 
-    let betId = i.toString()
     let bet = Bet.load(betId)
     if (!bet) continue
+
+    // Update bet from contract
+    let betResult = contract.try_getBet(BigInt.fromString(betId))
+    if (betResult.reverted) continue
+    let betData = betResult.value
 
     bet.finalized = betData.finalized
     bet.actualPrice = betData.actualPrice
@@ -135,6 +142,7 @@ export function handleBatchProcessed(event: BatchProcessed): void {
   if (bucket.nextProcessIndex >= bucket.totalBets) bucket.aggregationComplete = true
   bucket.save()
 }
+
 
 /** -------- Event: AggregationCompleted -------- */
 export function handleAggregationCompleted(event: AggregationCompleted): void {
