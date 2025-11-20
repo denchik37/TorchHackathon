@@ -6,10 +6,10 @@ import {
   FeeCollected,
   AggregationCompleted,
   BucketPriceSet,
+  BatchProcessed,
   TorchPredictionMarket
 } from "../generated/TorchPredictionMarket/TorchPredictionMarket"
 import { User, UserStats, Bet, Fee, Bucket } from "../generated/schema"
-
 
 /** -------- Helper: Create/Load User + Stats -------- */
 function getOrCreateUser(address: Address): UserStats {
@@ -33,7 +33,6 @@ function getOrCreateUser(address: Address): UserStats {
 
   return stats
 }
-
 
 /** -------- Event: BetPlaced -------- */
 export function handleBetPlaced(event: BetPlaced): void {
@@ -90,7 +89,6 @@ export function handleBetPlaced(event: BetPlaced): void {
   stats.save()
 }
 
-
 /** -------- Event: BetFinalized -------- */
 export function handleBetFinalized(event: BetFinalized): void {
   let bet = Bet.load(event.params.betId.toString())
@@ -113,7 +111,6 @@ export function handleBetFinalized(event: BetFinalized): void {
   }
 }
 
-
 /** -------- Event: BetClaimed -------- */
 export function handleBetClaimed(event: BetClaimed): void {
   let bet = Bet.load(event.params.betId.toString())
@@ -129,7 +126,6 @@ export function handleBetClaimed(event: BetClaimed): void {
   }
 }
 
-
 /** -------- Event: FeeCollected -------- */
 export function handleFeeCollected(event: FeeCollected): void {
   let id = `${event.transaction.hash.toHex()}-${event.logIndex.toString()}`
@@ -143,24 +139,20 @@ export function handleFeeCollected(event: FeeCollected): void {
   fee.save()
 }
 
-
 /** -------- Event: AggregationCompleted -------- */
 export function handleAggregationCompleted(event: AggregationCompleted): void {
   let bucketId = event.params.bucket.toString()
   let bucket = Bucket.load(bucketId)
-
   if (!bucket) return
 
   bucket.aggregationComplete = true
   bucket.save()
 }
 
-
-/** -------- Event: BucketPriceSet  -------- */
+/** -------- Event: BucketPriceSet -------- */
 export function handleBucketPriceSet(event: BucketPriceSet): void {
   let bucketId = event.params.bucket.toString()
   let bucket = Bucket.load(bucketId)
-
   if (!bucket) {
     bucket = new Bucket(bucketId)
     bucket.totalBets = 0
@@ -170,5 +162,54 @@ export function handleBucketPriceSet(event: BucketPriceSet): void {
   }
 
   bucket.price = event.params.price
+  bucket.save()
+}
+
+/** -------- Event: BatchProcessed -------- */
+export function handleBatchProcessed(event: BatchProcessed): void {
+  let bucketId = event.params.bucket.toString()
+  let bucket = Bucket.load(bucketId)
+  if (!bucket) return
+
+  let contract = TorchPredictionMarket.bind(event.address)
+
+  // Iterate over all bets in the bucket for which finalized=false
+  for (let i = 0; i < bucket.totalBets; i++) {
+    // Use derivedFrom relation if available
+    let betEntities = bucket.bets
+    if (!betEntities) continue
+
+    for (let j = 0; j < betEntities.length; j++) {
+      let bet = Bet.load(betEntities[j])
+      if (!bet || bet.finalized) continue
+
+      let betResult = contract.try_getBet(BigInt.fromString(bet.id))
+      if (betResult.reverted) continue
+      let betData = betResult.value
+
+      bet.finalized = betData.finalized
+      bet.actualPrice = betData.actualPrice
+      bet.won = betData.won
+      bet.payout = betData.won ? betData.weight : BigInt.zero()
+      bet.save()
+
+      // Update user stats if won
+      if (bet.won) {
+        let stats = UserStats.load(bet.user)
+        if (stats) {
+          stats.totalWon += 1
+          stats.totalPayout = stats.totalPayout.plus(bet.payout)
+          stats.save()
+        }
+      }
+    }
+  }
+
+  // Update bucket winning weight and next index
+  bucket.totalWinningWeight = bucket.totalWinningWeight.plus(event.params.winningWeight)
+  bucket.nextProcessIndex += event.params.processedCount.toI32()
+  if (bucket.nextProcessIndex >= bucket.totalBets) {
+    bucket.aggregationComplete = true
+  }
   bucket.save()
 }
