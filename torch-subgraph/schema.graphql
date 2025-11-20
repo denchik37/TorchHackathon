@@ -21,7 +21,7 @@ type Bucket @entity(immutable: false) {
 }
 
 # ---------------- BET ----------------
-type Bet @entity(immutable: true) {
+type Bet @entity(immutable: false) {
   id: ID!
   user: User!
   bucket: Int!
