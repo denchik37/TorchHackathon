@@ -3,14 +3,13 @@ import {
   BetPlaced,
   BetFinalized,
   BetClaimed,
-  BatchProcessed,
   FeeCollected,
   AggregationCompleted,
   BucketPriceSet,
+  BatchProcessed,
   TorchPredictionMarket
 } from "../generated/TorchPredictionMarket/TorchPredictionMarket"
 import { User, UserStats, Bet, Fee, Bucket } from "../generated/schema"
-
 
 /** -------- Helper: Create/Load User + Stats -------- */
 function getOrCreateUser(address: Address): UserStats {
@@ -35,6 +34,14 @@ function getOrCreateUser(address: Address): UserStats {
   return stats
 }
 
+/** -------- Helper: Update UserStats -------- */
+function updateUserStats(userId: string, won: boolean, payout: BigInt): void {
+  let stats = UserStats.load(userId)
+  if (!stats) return
+  if (won) stats.totalWon += 1
+  stats.totalPayout = stats.totalPayout.plus(payout ?? BigInt.zero())
+  stats.save()
+}
 
 /** -------- Event: BetPlaced -------- */
 export function handleBetPlaced(event: BetPlaced): void {
@@ -59,6 +66,7 @@ export function handleBetPlaced(event: BetPlaced): void {
     bucket.totalWinningWeight = BigInt.zero()
     bucket.nextProcessIndex = 0
     bucket.price = null
+    bucket.save()
   }
   bucket.totalBets += 1
   bucket.save()
@@ -91,6 +99,40 @@ export function handleBetPlaced(event: BetPlaced): void {
   stats.save()
 }
 
+/** -------- Event: BatchProcessed -------- */
+export function handleBatchProcessed(event: BatchProcessed): void {
+  let bucketId = event.params.bucket.toString()
+  let bucket = Bucket.load(bucketId)
+  if (!bucket) return
+
+  let contract = TorchPredictionMarket.bind(event.address)
+
+  // Fetch all bets in this bucket
+  let betsInBucket = bucket.bets
+  for (let i = bucket.nextProcessIndex; i < bucket.nextProcessIndex + event.params.processedCount.toI32(); i++) {
+    if (i >= betsInBucket.length) break
+
+    let bet = betsInBucket[i] as Bet
+    if (!bet || bet.finalized) continue
+
+    let betResult = contract.try_getBet(BigInt.fromString(bet.id))
+    if (betResult.reverted) continue
+    let betData = betResult.value
+
+    bet.finalized = betData.finalized
+    bet.actualPrice = betData.actualPrice
+    bet.won = betData.won
+    bet.payout = betData.won ? betData.weight ?? BigInt.zero() : BigInt.zero()
+    bet.save()
+
+    if (bet.won) updateUserStats(bet.user, true, bet.payout)
+  }
+
+  bucket.totalWinningWeight = bucket.totalWinningWeight.plus(event.params.winningWeight ?? BigInt.zero())
+  bucket.nextProcessIndex += event.params.processedCount.toI32()
+  if (bucket.nextProcessIndex >= bucket.totalBets) bucket.aggregationComplete = true
+  bucket.save()
+}
 
 /** -------- Event: BetFinalized -------- */
 export function handleBetFinalized(event: BetFinalized): void {
@@ -100,20 +142,11 @@ export function handleBetFinalized(event: BetFinalized): void {
   bet.finalized = true
   bet.actualPrice = event.params.actualPrice
   bet.won = event.params.won
-  bet.payout = event.params.payout
+  bet.payout = event.params.payout ?? BigInt.zero()
   bet.save()
 
-  // Update stats if win
-  if (event.params.won) {
-    let stats = UserStats.load(bet.user)
-    if (stats) {
-      stats.totalWon += 1
-      stats.totalPayout = stats.totalPayout.plus(event.params.payout)
-      stats.save()
-    }
-  }
+  if (event.params.won) updateUserStats(bet.user, true, bet.payout)
 }
-
 
 /** -------- Event: BetClaimed -------- */
 export function handleBetClaimed(event: BetClaimed): void {
@@ -123,13 +156,8 @@ export function handleBetClaimed(event: BetClaimed): void {
   bet.claimed = true
   bet.save()
 
-  let stats = UserStats.load(event.params.bettor.toHexString())
-  if (stats) {
-    stats.totalPayout = stats.totalPayout.plus(event.params.payout)
-    stats.save()
-  }
+  updateUserStats(event.params.bettor.toHexString(), bet.won, event.params.payout ?? BigInt.zero())
 }
-
 
 /** -------- Event: FeeCollected -------- */
 export function handleFeeCollected(event: FeeCollected): void {
@@ -144,20 +172,17 @@ export function handleFeeCollected(event: FeeCollected): void {
   fee.save()
 }
 
-
 /** -------- Event: AggregationCompleted -------- */
 export function handleAggregationCompleted(event: AggregationCompleted): void {
   let bucketId = event.params.bucket.toString()
   let bucket = Bucket.load(bucketId)
-
   if (!bucket) return
 
   bucket.aggregationComplete = true
   bucket.save()
 }
 
-
-/** -------- Event: BucketPriceSet  -------- */
+/** -------- Event: BucketPriceSet -------- */
 export function handleBucketPriceSet(event: BucketPriceSet): void {
   let bucketId = event.params.bucket.toString()
   let bucket = Bucket.load(bucketId)
@@ -173,49 +198,3 @@ export function handleBucketPriceSet(event: BucketPriceSet): void {
   bucket.price = event.params.price
   bucket.save()
 }
-
-/** -------- Event: BatchProcessed -------- */
-export function handleBatchProcessed(event: BatchProcessed): void {
-  let bucketId = event.params.bucket.toString()
-  let bucket = Bucket.load(bucketId)
-  if (!bucket) return
-
-  let contract = TorchPredictionMarket.bind(event.address)
-
-  // Add batch winning weight once
-  bucket.totalWinningWeight = bucket.totalWinningWeight.plus(event.params.winningWeight)
-
-  // Loop through the actual bets in the bucket
-  for (let i = 0; i < event.params.processedCount.toI32(); i++) {
-    let betId = bucket.betIds[bucket.nextProcessIndex + i]
-    let bet = Bet.load(betId)
-    if (!bet || bet.finalized) continue
-
-    let betResult = contract.try_getBet(BigInt.fromString(bet.id))
-    if (betResult.reverted) continue
-    let betData = betResult.value
-
-    bet.finalized = betData.finalized
-    bet.actualPrice = betData.actualPrice
-    bet.won = betData.won
-    bet.payout = betData.won ? betData.weight : BigInt.zero()
-    bet.save()
-
-    if (bet.won) {
-      let stats = UserStats.load(bet.user)
-      if (stats) {
-        stats.totalWon += 1
-        stats.totalPayout = stats.totalPayout.plus(bet.payout)
-        stats.save()
-      }
-    }
-  }
-
-  bucket.nextProcessIndex += event.params.processedCount.toI32()
-  if (bucket.nextProcessIndex >= bucket.totalBets) {
-    bucket.aggregationComplete = true
-  }
-  bucket.save()
-}
-
-
