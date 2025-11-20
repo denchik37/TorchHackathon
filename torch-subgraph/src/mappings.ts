@@ -105,7 +105,9 @@ export function handleBetFinalized(event: BetFinalized): void {
     let stats = UserStats.load(bet.user)
     if (stats) {
       stats.totalWon += 1
-      stats.totalPayout = stats.totalPayout.plus(event.params.payout)
+      stats.totalPayout = stats.totalPayout.plus(
+        bet.payout ? bet.payout : BigInt.zero()
+      )
       stats.save()
     }
   }
@@ -121,7 +123,9 @@ export function handleBetClaimed(event: BetClaimed): void {
 
   let stats = UserStats.load(event.params.bettor.toHexString())
   if (stats) {
-    stats.totalPayout = stats.totalPayout.plus(event.params.payout)
+    stats.totalPayout = stats.totalPayout.plus(
+      event.params.payout ? event.params.payout : BigInt.zero()
+    )
     stats.save()
   }
 }
@@ -173,40 +177,39 @@ export function handleBatchProcessed(event: BatchProcessed): void {
 
   let contract = TorchPredictionMarket.bind(event.address)
 
-  // Iterate over all bets in the bucket for which finalized=false
-  for (let i = 0; i < bucket.totalBets; i++) {
-    // Use derivedFrom relation if available
-    let betEntities = bucket.bets
-    if (!betEntities) continue
+  // Load all bets for this bucket using the derivedFrom relation
+  let betIds = bucket.bets ? bucket.bets.map<string>((b) => b.id) : []
+  for (let i = 0; i < betIds.length; i++) {
+    let bet = Bet.load(betIds[i])
+    if (!bet || bet.finalized) continue
 
-    for (let j = 0; j < betEntities.length; j++) {
-      let bet = Bet.load(betEntities[j])
-      if (!bet || bet.finalized) continue
+    let betResult = contract.try_getBet(BigInt.fromString(bet.id))
+    if (betResult.reverted) continue
+    let betData = betResult.value
 
-      let betResult = contract.try_getBet(BigInt.fromString(bet.id))
-      if (betResult.reverted) continue
-      let betData = betResult.value
+    bet.finalized = betData.finalized
+    bet.actualPrice = betData.actualPrice
+    bet.won = betData.won
+    bet.payout = betData.won ? betData.weight : BigInt.zero()
+    bet.save()
 
-      bet.finalized = betData.finalized
-      bet.actualPrice = betData.actualPrice
-      bet.won = betData.won
-      bet.payout = betData.won ? betData.weight : BigInt.zero()
-      bet.save()
-
-      // Update user stats if won
-      if (bet.won) {
-        let stats = UserStats.load(bet.user)
-        if (stats) {
-          stats.totalWon += 1
-          stats.totalPayout = stats.totalPayout.plus(bet.payout)
-          stats.save()
-        }
+    // Update user stats if won
+    if (bet.won) {
+      let stats = UserStats.load(bet.user)
+      if (stats) {
+        stats.totalWon += 1
+        stats.totalPayout = stats.totalPayout.plus(
+          bet.payout ? bet.payout : BigInt.zero()
+        )
+        stats.save()
       }
     }
   }
 
-  // Update bucket winning weight and next index
-  bucket.totalWinningWeight = bucket.totalWinningWeight.plus(event.params.winningWeight)
+  // Update bucket
+  bucket.totalWinningWeight = bucket.totalWinningWeight.plus(
+    event.params.winningWeight
+  )
   bucket.nextProcessIndex += event.params.processedCount.toI32()
   if (bucket.nextProcessIndex >= bucket.totalBets) {
     bucket.aggregationComplete = true
