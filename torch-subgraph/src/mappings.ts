@@ -182,28 +182,25 @@ export function handleBatchProcessed(event: BatchProcessed): void {
 
   let contract = TorchPredictionMarket.bind(event.address)
 
-  // Loop through the bets in the batch
+  // Add batch winning weight once
+  bucket.totalWinningWeight = bucket.totalWinningWeight.plus(event.params.winningWeight)
+
+  // Loop through the actual bets in the bucket
   for (let i = 0; i < event.params.processedCount.toI32(); i++) {
-    let betIndex = bucket.nextProcessIndex + i
-    let betId = BigInt.fromI32(betIndex).toString()
+    let betId = bucket.betIds[bucket.nextProcessIndex + i]
     let bet = Bet.load(betId)
     if (!bet || bet.finalized) continue
 
-    // Fetch bet details from the contract
     let betResult = contract.try_getBet(BigInt.fromString(bet.id))
     if (betResult.reverted) continue
     let betData = betResult.value
 
-    // Update bet with on-chain data
     bet.finalized = betData.finalized
     bet.actualPrice = betData.actualPrice
     bet.won = betData.won
-
-    // Use on-chain payout if available, otherwise zero
-    bet.payout = betData.payout ? betData.payout : BigInt.zero()
+    bet.payout = betData.won ? betData.weight : BigInt.zero()
     bet.save()
 
-    // Update user stats if won
     if (bet.won) {
       let stats = UserStats.load(bet.user)
       if (stats) {
@@ -214,19 +211,11 @@ export function handleBatchProcessed(event: BatchProcessed): void {
     }
   }
 
-  // Update bucket info AFTER processing all bets
-  let winningWeight: BigInt
-  if (event.params.winningWeight) {
-    winningWeight = event.params.winningWeight as BigInt
-  } else {
-    winningWeight = BigInt.zero()
-  }
-  bucket.totalWinningWeight = bucket.totalWinningWeight.plus(winningWeight)
-
   bucket.nextProcessIndex += event.params.processedCount.toI32()
   if (bucket.nextProcessIndex >= bucket.totalBets) {
     bucket.aggregationComplete = true
   }
   bucket.save()
 }
+
 
