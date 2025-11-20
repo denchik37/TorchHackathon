@@ -27,7 +27,11 @@ import TorchPredictionMarketABI from '../../../abi/TorchPredictionMarket.json';
 const GET_BETS = gql`
   query GetBetsForDate($startTime: Int!, $endTime: Int!) {
     bets(
-      where: { targetTimestamp_gte: $startTime, targetTimestamp_lte: $endTime }
+      where: {
+        targetTimestamp_gte: $startTime
+        targetTimestamp_lte: $endTime
+        bucketRef_: { aggregationComplete: false }
+      }
       orderBy: targetTimestamp
       orderDirection: asc
     ) {
@@ -38,6 +42,10 @@ const GET_BETS = gql`
       timestamp
       targetTimestamp
       bucket
+      bucketRef {
+        id
+        aggregationComplete
+      }
     }
   }
 `;
