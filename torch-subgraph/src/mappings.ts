@@ -109,12 +109,15 @@ export function handleBatchProcessed(event: BatchProcessed): void {
 
   for (let i = 0; i < event.params.processedCount.toI32(); i++) {
     let betIndex = bucket.nextProcessIndex + i
-    let betId = BigInt.fromI32(betIndex).toString()
+    // Fetch real bet ID from contract's bucket
+    let betResultId = contract.try_getBucketBetId(BigInt.fromI32(bucketId as i32), BigInt.fromI32(betIndex))
+    if (betResultId.reverted) continue
+    let betId = betResultId.value.toString()
+
     let bet = Bet.load(betId)
     if (!bet || bet.finalized) continue
 
-    // Fetch bet data from contract
-    let betResult = contract.try_getBet(BigInt.fromString(bet.id))
+    let betResult = contract.try_getBet(BigInt.fromString(betId))
     if (betResult.reverted) continue
     let betData = betResult.value
 
