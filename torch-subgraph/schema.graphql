@@ -14,11 +14,15 @@ type UserStats @entity(immutable: false) {
 
 # ---------------- BUCKET ----------------
 type Bucket @entity(immutable: false) {
-  id: ID!
-  aggregationComplete: Boolean!
+  id: ID!                    
   totalBets: Int!
+  aggregationComplete: Boolean!
+  totalWinningWeight: BigInt!
+  nextProcessIndex: Int!
+  price: BigInt             
   bets: [Bet!]! @derivedFrom(field: "bucketRef")
 }
+
 
 # ---------------- BET ----------------
 type Bet @entity(immutable: false) {
