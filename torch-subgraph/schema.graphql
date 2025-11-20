@@ -19,8 +19,9 @@ type Bucket @entity(immutable: false) {
   aggregationComplete: Boolean!
   totalWinningWeight: BigInt!
   nextProcessIndex: Int!
-  price: BigInt             
+  price: BigInt
   bets: [Bet!]! @derivedFrom(field: "bucketRef")
+  betIds: [String!]!
 }
 
 
