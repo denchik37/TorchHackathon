@@ -194,25 +194,33 @@ export function handleBatchProcessed(event: BatchProcessed): void {
     if (betResult.reverted) continue
     let betData = betResult.value
 
-    // Update bet
+    // Update bet with on-chain data
     bet.finalized = betData.finalized
     bet.actualPrice = betData.actualPrice
     bet.won = betData.won
-    bet.payout = betData.won ? betData.weight : BigInt.zero()
+
+    // Use on-chain payout if available, otherwise zero
+    bet.payout = betData.payout ? betData.payout : BigInt.zero()
     bet.save()
 
-   // Update stats safely
-  if (bet.won) {
-    let stats = UserStats.load(bet.user)
-    if (stats) {
-      stats.totalWon += 1
-      stats.totalPayout = stats.totalPayout.plus(bet.payout ?? BigInt.zero())
-      stats.save()
+    // Update user stats if won
+    if (bet.won) {
+      let stats = UserStats.load(bet.user)
+      if (stats) {
+        stats.totalWon += 1
+        stats.totalPayout = stats.totalPayout.plus(bet.payout)
+        stats.save()
+      }
     }
   }
-  
-  // Use non-null for winningWeight
-  let winningWeight = event.params.winningWeight ?? BigInt.zero()
+
+  // Update bucket info AFTER processing all bets
+  let winningWeight: BigInt
+  if (event.params.winningWeight) {
+    winningWeight = event.params.winningWeight as BigInt
+  } else {
+    winningWeight = BigInt.zero()
+  }
   bucket.totalWinningWeight = bucket.totalWinningWeight.plus(winningWeight)
 
   bucket.nextProcessIndex += event.params.processedCount.toI32()
@@ -221,3 +229,4 @@ export function handleBatchProcessed(event: BatchProcessed): void {
   }
   bucket.save()
 }
+
