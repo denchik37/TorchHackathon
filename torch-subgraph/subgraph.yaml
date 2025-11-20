@@ -37,4 +37,6 @@ dataSources:
           handler: handleAggregationCompleted
         - event: BucketPriceSet(indexed uint256,uint256)
           handler: handleBucketPriceSet
+        - event: BatchProcessed(uint256,uint256,uint256)
+          handler: handleBatchProcessed 
       file: ./src/mappings.ts
