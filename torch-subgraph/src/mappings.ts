@@ -136,6 +136,15 @@ export function handleBatchProcessed(event: BatchProcessed): void {
   bucket.save()
 }
 
+/** -------- Event: AggregationCompleted -------- */
+export function handleAggregationCompleted(event: AggregationCompleted): void {
+  let bucket = Bucket.load(event.params.bucket.toString())
+  if (!bucket) return
+
+  bucket.aggregationComplete = true
+  bucket.save()
+}
+
 /** -------- Event: BetClaimed -------- */
 export function handleBetClaimed(event: BetClaimed): void {
   let bet = Bet.load(event.params.betId.toString())
