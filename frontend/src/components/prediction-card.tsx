@@ -690,7 +690,7 @@ export function PredictionCard({ className }: PredictionCardProps) {
           </TabsContent>
 
           <TabsContent value="forecast" className="space-y-4">
-            <KDEChart currentPrice={currentPrice} className="h-96 p-8" />
+            <KDEChart currentPrice={currentPrice} className="h-96 py-8" />
           </TabsContent>
 
           <TabsContent value="history">
