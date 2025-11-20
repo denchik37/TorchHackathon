@@ -158,11 +158,6 @@ function AdminPage() {
 
   // Submit prices to contract
   const submitPrices = async () => {
-    if (!data?.bets) {
-      alert('No bets data available');
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       // Get unique timestamps
@@ -177,6 +172,30 @@ function AdminPage() {
 
       if (timestampsWithPrices.length === 0) {
         alert('No prices to submit');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Check if all bet timestamps have prices
+      const timestampsWithoutPrices = uniqueTimestamps.filter(
+        (ts) => getFinalPrice(ts as number) === null
+      );
+
+      console.log('Timestamps without prices:', timestampsWithoutPrices);
+
+      if (timestampsWithoutPrices.length > 0) {
+        // Log bets without prices
+        const betsWithoutPrices = data.bets.filter((bet: Bet) =>
+          timestampsWithoutPrices.includes(bet.targetTimestamp)
+        );
+        console.log('=== BETS WITHOUT PRICES ===');
+        console.log('Bets missing prices:', betsWithoutPrices);
+        console.log('===========================');
+
+        const missingTimestamps = timestampsWithoutPrices
+          .map((ts) => new Date((ts as number) * 1000).toISOString())
+          .join(', ');
+
         setIsSubmitting(false);
         return;
       }
