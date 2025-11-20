@@ -107,17 +107,13 @@ export function handleBatchProcessed(event: BatchProcessed): void {
 
   let contract = TorchPredictionMarket.bind(event.address)
 
-  for (let i = 0; i < event.params.processedCount.toI32(); i++) {
-    let betIndex = bucket.nextProcessIndex + i
-    // Fetch real bet ID from contract's bucket
-    let betResultId = contract.try_getBucketBetId(BigInt.fromI32(bucketId as i32), BigInt.fromI32(betIndex))
-    if (betResultId.reverted) continue
-    let betId = betResultId.value.toString()
-
-    let bet = Bet.load(betId)
+  // Loop over all bets in the bucket and only update the unfinalized ones
+  let betsInBucket = bucket.bets
+  for (let i = 0; i < betsInBucket.length && i < event.params.processedCount.toI32(); i++) {
+    let bet = Bet.load(betsInBucket[i])
     if (!bet || bet.finalized) continue
 
-    let betResult = contract.try_getBet(BigInt.fromString(betId))
+    let betResult = contract.try_getBet(BigInt.fromString(bet.id))
     if (betResult.reverted) continue
     let betData = betResult.value
 
@@ -133,15 +129,6 @@ export function handleBatchProcessed(event: BatchProcessed): void {
   bucket.totalWinningWeight = bucket.totalWinningWeight.plus(event.params.winningWeight)
   bucket.nextProcessIndex += event.params.processedCount.toI32()
   if (bucket.nextProcessIndex >= bucket.totalBets) bucket.aggregationComplete = true
-  bucket.save()
-}
-
-/** -------- Event: AggregationCompleted -------- */
-export function handleAggregationCompleted(event: AggregationCompleted): void {
-  let bucket = Bucket.load(event.params.bucket.toString())
-  if (!bucket) return
-
-  bucket.aggregationComplete = true
   bucket.save()
 }
 
