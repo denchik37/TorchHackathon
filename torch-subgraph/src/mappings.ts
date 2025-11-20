@@ -99,15 +99,14 @@ export function handleBetFinalized(event: BetFinalized): void {
   bet.finalized = true
   bet.actualPrice = event.params.actualPrice
   bet.won = event.params.won
-  bet.payout = event.params.payout != null ? event.params.payout! : BigInt.zero()
+  bet.payout = event.params.payout != null ? event.params.payout : BigInt.zero()
   bet.save()
 
   if (bet.won) {
     let stats = UserStats.load(bet.user)
     if (stats) {
       stats.totalWon += 1
-      let payoutNonNull = bet.payout != null ? bet.payout! : BigInt.zero()
-      stats.totalPayout = stats.totalPayout.plus(payoutNonNull)
+      stats.totalPayout = stats.totalPayout.plus(bet.payout)
       stats.save()
     }
   }
@@ -123,8 +122,8 @@ export function handleBetClaimed(event: BetClaimed): void {
 
   let stats = UserStats.load(event.params.bettor.toHexString())
   if (stats) {
-    let payoutNonNull = event.params.payout != null ? event.params.payout! : BigInt.zero()
-    stats.totalPayout = stats.totalPayout.plus(payoutNonNull)
+    let payout = event.params.payout != null ? event.params.payout : BigInt.zero()
+    stats.totalPayout = stats.totalPayout.plus(payout)
     stats.save()
   }
 }
@@ -189,22 +188,27 @@ export function handleBatchProcessed(event: BatchProcessed): void {
     bet.finalized = betData.finalized
     bet.actualPrice = betData.actualPrice
     bet.won = betData.won
-    bet.payout = betData.won && betData.weight != null ? betData.weight! : BigInt.zero()
+
+    // Safe payout assignment
+    let payout = BigInt.zero()
+    if (betData.won && betData.weight != null) {
+      payout = betData.weight
+    }
+    bet.payout = payout
     bet.save()
 
     if (bet.won) {
       let stats = UserStats.load(bet.user)
       if (stats) {
         stats.totalWon += 1
-        let payoutNonNull = bet.payout != null ? bet.payout! : BigInt.zero()
-        stats.totalPayout = stats.totalPayout.plus(payoutNonNull)
+        stats.totalPayout = stats.totalPayout.plus(bet.payout)
         stats.save()
       }
     }
   }
 
-  let winningWeightNonNull = event.params.winningWeight != null ? event.params.winningWeight! : BigInt.zero()
-  bucket.totalWinningWeight = bucket.totalWinningWeight.plus(winningWeightNonNull)
+  let winningWeight = event.params.winningWeight != null ? event.params.winningWeight : BigInt.zero()
+  bucket.totalWinningWeight = bucket.totalWinningWeight.plus(winningWeight)
   bucket.nextProcessIndex += event.params.processedCount.toI32()
   if (bucket.nextProcessIndex >= bucket.totalBets) {
     bucket.aggregationComplete = true
