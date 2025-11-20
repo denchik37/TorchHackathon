@@ -35,11 +35,11 @@ function getOrCreateUser(address: Address): UserStats {
 }
 
 /** -------- Helper: Update UserStats -------- */
-function updateUserStats(userId: string, won: boolean, payout: BigInt): void {
+function updateUserStats(userId: string, won: boolean, payout: BigInt | null): void {
   let stats = UserStats.load(userId)
   if (!stats) return
   if (won) stats.totalWon += 1
-  stats.totalPayout = stats.totalPayout.plus(payout ?? BigInt.zero())
+  stats.totalPayout = stats.totalPayout.plus(payout ? payout : BigInt.zero())
   stats.save()
 }
 
@@ -107,7 +107,6 @@ export function handleBatchProcessed(event: BatchProcessed): void {
 
   let contract = TorchPredictionMarket.bind(event.address)
 
-  // Fetch all bets in this bucket
   let betsInBucket = bucket.bets
   for (let i = bucket.nextProcessIndex; i < bucket.nextProcessIndex + event.params.processedCount.toI32(); i++) {
     if (i >= betsInBucket.length) break
@@ -122,13 +121,16 @@ export function handleBatchProcessed(event: BatchProcessed): void {
     bet.finalized = betData.finalized
     bet.actualPrice = betData.actualPrice
     bet.won = betData.won
-    bet.payout = betData.won ? betData.weight ?? BigInt.zero() : BigInt.zero()
+    bet.payout = betData.won && betData.weight ? betData.weight : BigInt.zero()
     bet.save()
 
     if (bet.won) updateUserStats(bet.user, true, bet.payout)
   }
 
-  bucket.totalWinningWeight = bucket.totalWinningWeight.plus(event.params.winningWeight ?? BigInt.zero())
+  let winningWeight = event.params.winningWeight
+  if (!winningWeight) winningWeight = BigInt.zero()
+  bucket.totalWinningWeight = bucket.totalWinningWeight.plus(winningWeight)
+
   bucket.nextProcessIndex += event.params.processedCount.toI32()
   if (bucket.nextProcessIndex >= bucket.totalBets) bucket.aggregationComplete = true
   bucket.save()
@@ -142,7 +144,7 @@ export function handleBetFinalized(event: BetFinalized): void {
   bet.finalized = true
   bet.actualPrice = event.params.actualPrice
   bet.won = event.params.won
-  bet.payout = event.params.payout ?? BigInt.zero()
+  bet.payout = event.params.payout ? event.params.payout : BigInt.zero()
   bet.save()
 
   if (event.params.won) updateUserStats(bet.user, true, bet.payout)
@@ -156,7 +158,8 @@ export function handleBetClaimed(event: BetClaimed): void {
   bet.claimed = true
   bet.save()
 
-  updateUserStats(event.params.bettor.toHexString(), bet.won, event.params.payout ?? BigInt.zero())
+  let payout = event.params.payout ? event.params.payout : BigInt.zero()
+  updateUserStats(event.params.bettor.toHexString(), bet.won, payout)
 }
 
 /** -------- Event: FeeCollected -------- */
