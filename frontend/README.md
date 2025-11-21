@@ -16,7 +16,6 @@ Torch provides a comprehensive prediction market interface with the following ca
 
 ## Technical Features
 
-- 🎨 **Theme Support** - Dark/light mode toggle with system preference detection
 - 💰 **Wallet Integration** - HashPack (primary), WalletConnect, and other Hedera wallets
 - 📊 **Interactive KDE Charts** - Kernel Density Estimation visualization with confidence hover states
 - 🎯 **Price Range Selection** - Interactive histogram for bet distribution visualization
@@ -87,7 +86,9 @@ src/
 │   └── theme-toggle.tsx  # Theme toggle component
 ├── lib/                  # Utility functions and configurations
 │   ├── utils.ts          # Common utility functions
-│   └── wagmi.ts          # Wallet configuration
+│   ├── apolloClient.ts   # GraphQL client configuration
+│   ├── coingecko.ts      # HBAR price API integration
+│   └── types.ts          # TypeScript type definitions
 └── types/                # TypeScript type definitions
 ```
 
@@ -124,8 +125,9 @@ Navigation header with:
 
 - Torch branding
 - Wallet connection status
-- Theme toggle
 - HBAR balance display
+- Account address with copy functionality
+- Website link
 
 ## Wallet Integration
 
@@ -165,6 +167,7 @@ Torch is part of the **Origins and Ascension hackathons**. This project is licen
 
 ## Planned Features
 
+- 🎨 **Theme support** - Dark/light mode toggle (component exists but not implemented in UI)
 - 📱 **Mobile optimization** - Enhanced mobile experience
 - 🤖 **AI agent integration** - Automated prediction strategies
 - 📊 **Advanced analytics** - Detailed performance metrics
