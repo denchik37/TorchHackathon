@@ -82,8 +82,8 @@ src/
 │   ├── kde-chart.tsx     # Interactive KDE visualization
 │   ├── price-range-selector.tsx # Price range selection
 │   ├── bet-history.tsx   # Bet history table
-│   ├── theme-provider.tsx # Theme context provider
-│   └── theme-toggle.tsx  # Theme toggle component
+│   ├── hbar-price-display.tsx # HBAR price component
+│   └── wallet-selector.tsx # Wallet connection component
 ├── lib/                  # Utility functions and configurations
 │   ├── utils.ts          # Common utility functions
 │   ├── apolloClient.ts   # GraphQL client configuration
@@ -143,8 +143,8 @@ The app uses Hedera-specific wallet integration:
 The app uses a custom design system built on Tailwind CSS:
 
 - **Colors**: Custom torch color palette (purple, green, red, orange, blue)
-- **Themes**: Dark and light mode with CSS variables
-- **Components**: Consistent design tokens and spacing
+- **Design**: Dark theme with consistent design tokens and spacing
+- **Components**: Reusable UI components with Tailwind classes
 
 ## Available Scripts
 
