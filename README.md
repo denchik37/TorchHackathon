@@ -16,7 +16,7 @@
 - [🏁 Hackathon Scope](#hackathon-scope)
 - [🧱 Monorepo Structure](#-monorepo-structure)
 - [📁 Projects Overview](#-projects-overview)
-- [⚙️ Tech Stack](#-tech-stack)
+- [💻 Tech Stack](#-tech-stack)
 - [📚 How It Works: TorchPredictionMarket Step-by-Step](#-how-it-works-torchpredictionmarket-step-by-step)
   - [🧾 Step 1: Place Bets](#-step-1-place-bets)
   - [🧮 Step 2: Weighting Bets Based on Precision](#-step-2-weighting-bets-based-on-precision)
@@ -90,10 +90,11 @@ torchpredictionmarket/
 | [`smartContracts/`](./smartContracts) | Core Solidity smart contracts for placing, resolving, and claiming predictions |
 | [`torch-subgraph/`](./torch-subgraph) | Graph protocol subgraph for indexing `BetPlaced`, `BetFinalized`, and `BetClaimed` events |
 
----
+--- 
+
 #
 
-## ⚙️ Tech Stack
+## 💻 Tech Stack
 
 ### Primary Development Framework: Hardhat
 
