@@ -2,24 +2,39 @@
 
 A modern Next.js frontend for the Torch cryptocurrency prediction market platform, built with Tailwind CSS, Radix UI, and viem for wallet integration.
 
-## Features
+## End User Features
 
-- 🎨 **Dark/Light Theme Support** - Toggle between themes with system preference detection
-- 💰 **Wallet Integration** - Connect with MetaMask, WalletConnect, and other wallets via viem
+Torch provides a comprehensive prediction market interface with the following capabilities:
+
+| Feature | Description |
+|---------|-------------|
+| 🎯 **Place a bet** | Predict HBAR price ranges with custom time horizons |
+| 📊 **View signals** | Real-time price forecasting and market visualization |
+| 📈 **View activity** | Track bet history, status, and performance |
+| 🏆 **Claim rewards** | Collect winnings from successful predictions |
+| ⚙️ **Admin panel** | Batch processing and bet resolution (Clerk authentication) |
+
+## Technical Features
+
+- 🎨 **Theme Support** - Dark/light mode toggle with system preference detection
+- 💰 **Wallet Integration** - HashPack (primary), WalletConnect, and other Hedera wallets
 - 📊 **Interactive KDE Charts** - Kernel Density Estimation visualization with confidence hover states
 - 🎯 **Price Range Selection** - Interactive histogram for bet distribution visualization
 - 📱 **Responsive Design** - Mobile-first design with Tailwind CSS
 - ⚡ **Modern Stack** - Next.js 14, TypeScript, and modern React patterns
 - 🎭 **Accessible UI** - Built with Radix UI primitives for accessibility
+- 💲 **Real-time HBAR Prices** - CoinGecko API integration with 30-second updates
+- 🔔 **Toast Notifications** - Real-time feedback for user actions
 
 ## Tech Stack
 
 - **Framework**: Next.js 14 with App Router
 - **Styling**: Tailwind CSS with custom design system
 - **UI Components**: Radix UI + shadcn/ui
-- **Wallet Integration**: viem + wagmi
+- **Wallet Integration**: @buidlerlabs/hashgraph-react-wallets
 - **Charts**: Recharts for data visualization
-- **Theme**: next-themes for dark/light mode
+- **Authentication**: Clerk (admin panel)
+- **Data**: Apollo Client + GraphQL
 - **Language**: TypeScript
 
 ## Getting Started
@@ -114,11 +129,12 @@ Navigation header with:
 
 ## Wallet Integration
 
-The app uses viem and wagmi for wallet integration:
+The app uses Hedera-specific wallet integration:
 
-- **Supported Wallets**: MetaMask, WalletConnect, Injected wallets
-- **Networks**: Hedera Testnet (primary), Ethereum Mainnet, Sepolia
-- **Features**: Balance display, address formatting, disconnect functionality
+- **Primary Wallet**: HashPack (recommended)
+- **Additional Support**: WalletConnect, other Hedera-compatible wallets
+- **Network**: Hedera Mainnet (production ready)
+- **Features**: Balance display, transaction signing, bet placement, reward claiming
 
 ## Styling
 
@@ -145,4 +161,11 @@ The app uses a custom design system built on Tailwind CSS:
 
 ## License
 
-This project is part of the Torch Origins Hackathon.
+Torch is part of the **Origins and Ascension hackathons**. This project is licensed under the MIT License.
+
+## Planned Features
+
+- 📱 **Mobile optimization** - Enhanced mobile experience
+- 🤖 **AI agent integration** - Automated prediction strategies
+- 📊 **Advanced analytics** - Detailed performance metrics
+- 🔔 **Push notifications** - Real-time bet status updates
