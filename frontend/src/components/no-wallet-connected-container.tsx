@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button';
 import { WalletSelector } from '@/components/wallet-selector';
 
 export default function NoWalletConnectedPage() {

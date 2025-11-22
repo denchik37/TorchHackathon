@@ -19,7 +19,7 @@ services:
       postgres_pass: 'let-me-in'
       postgres_db: 'graph-node'
       ipfs: 'ipfs:5001'
-      ethereum: 'mainnet:https://mainnet.hedera.validationcloud.io/v1/KtASCS3AQR1EMBH53M-8_jRuHsGP1uKPMhnAJLHTefE'
+      ethereum: 'mainnet:https://mainnet.hedera.validationcloud.io/v1/bsFxhdPoce45vTLgJ8LGLsWi5KuLcK42ez0I9QuF7D4'
       ETHEREUM_REORG_THRESHOLD: 1
       ETHEREUM_POLLING_INTERVAL: 1000
       RUST_LOG: INFO

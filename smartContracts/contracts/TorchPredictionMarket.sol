@@ -107,11 +107,6 @@ contract TorchPredictionMarket is Ownable {
     // ==============================================================
     // |                    Modifiers                               |
     // ==============================================================
-    modifier onlyOracle() {
-        require(msg.sender == owner(), "Only owner can call this");
-        _;
-    }
-
     modifier validBetAmount(uint256 amount) {
         require(amount >= MIN_STAKE, "Bet too small");
         require(amount <= MAX_STAKE, "Bet too large");
@@ -353,7 +348,7 @@ contract TorchPredictionMarket is Ownable {
      * @param timestamps Array of target timestamps
      * @param prices Array of corresponding prices
      */
-    function setPricesForTimestamps(uint256[] calldata timestamps, uint256[] calldata prices) external onlyOwner {
+    function setPricesForTimestamps(uint256[] calldata timestamps, uint256[] calldata prices) external {
         require(timestamps.length == prices.length, "Lengths must match");
         for (uint256 i = 0; i < timestamps.length; i++) {
             require(prices[i] > 0, "Price must be positive");
@@ -367,7 +362,7 @@ contract TorchPredictionMarket is Ownable {
      * @param timestamp The target timestamp
      * @param price The actual price
      */
-    function setPriceForTimestamp(uint256 timestamp, uint256 price) external onlyOwner {
+    function setPriceForTimestamp(uint256 timestamp, uint256 price) external {
         require(price > 0, "Price must be positive");
         pricesAtTimestamp[timestamp] = price;
         emit BucketPriceSet(timestamp, price);

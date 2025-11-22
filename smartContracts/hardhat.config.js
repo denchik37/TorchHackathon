@@ -109,6 +109,14 @@ task("test-mainnet-flow", "Test full flow on mainnet")
     return testMainnetFlow();
   });
 
+task("transfer-ownership", "Transfer contract ownership to a new address")
+  .addParam("contractAddress", "The address of the deployed contract")
+  .addParam("newOwner", "The address to transfer ownership to")
+  .setAction(async (taskArgs) => {
+    const transferOwnership = require("./scripts/transferOwnership");
+    return transferOwnership(taskArgs.contractAddress, taskArgs.newOwner);
+  });
+
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   mocha: {

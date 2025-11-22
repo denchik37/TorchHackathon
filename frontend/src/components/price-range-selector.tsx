@@ -1,13 +1,42 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useCallback } from 'react';
-import { cn } from '@/lib/utils';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { cn, formatTinybarsToHbar } from '@/lib/utils';
+import { gql, useQuery } from '@apollo/client';
+
+const GET_BETS_FOR_DAY = gql`
+  query GetBetsForDay($startTimestamp: Int!, $endTimestamp: Int!) {
+    bets(where: { targetTimestamp_gte: $startTimestamp, targetTimestamp_lte: $endTimestamp }) {
+      id
+      stake
+      priceMin
+      priceMax
+      targetTimestamp
+    }
+  }
+`;
+
+// Helper function to get day's timestamp range
+function getDayTimestampRange(date: Date) {
+  const startOfDay = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0)
+  );
+  const endOfDay = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 23, 59, 59)
+  );
+
+  return {
+    startTimestamp: Math.floor(startOfDay.getTime() / 1000),
+    endTimestamp: Math.floor(endOfDay.getTime() / 1000),
+  };
+}
 
 interface PriceRangeSelectorProps {
   minPrice: number;
   maxPrice: number;
   currentPrice: number;
   totalBets: number;
+  selectedDate: Date;
   onRangeChange: (min: number, max: number) => void;
   className?: string;
 }
@@ -17,65 +46,135 @@ export function PriceRangeSelector({
   maxPrice,
   currentPrice,
   totalBets,
+  selectedDate,
   onRangeChange,
   className,
 }: PriceRangeSelectorProps) {
-  const [selectedMin, setSelectedMin] = useState(minPrice + (maxPrice - minPrice) * 0.2);
-  const [selectedMax, setSelectedMax] = useState(maxPrice - (maxPrice - minPrice) * 0.2);
+  const [selectedMin, setSelectedMin] = useState(minPrice + (maxPrice - minPrice) * 0.1);
+  const [selectedMax, setSelectedMax] = useState(maxPrice - (maxPrice - minPrice) * 0.1);
   const [isDraggingMin, setIsDraggingMin] = useState(false);
   const [isDraggingMax, setIsDraggingMax] = useState(false);
+  const [minInputValue, setMinInputValue] = useState('');
+  const [maxInputValue, setMaxInputValue] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Generate histogram data (simulated bet distribution)
+  // Update selected range when price props change
+  useEffect(() => {
+    setSelectedMin(minPrice + (maxPrice - minPrice) * 0.1);
+    setSelectedMax(maxPrice - (maxPrice - minPrice) * 0.1);
+  }, [minPrice, maxPrice]);
+
+  // Get timestamp range for the selected day
+  const { startTimestamp, endTimestamp } = getDayTimestampRange(selectedDate);
+
+  // Fetch real bet data for the selected day
+  const { data: betsData, loading: betsLoading } = useQuery(GET_BETS_FOR_DAY, {
+    variables: { startTimestamp, endTimestamp },
+    fetchPolicy: 'cache-and-network',
+  });
+
+  // Calculate total volume for the day
+  const totalVolumeHbar = useMemo(() => {
+    if (betsLoading || !betsData?.bets) return 0;
+
+    return betsData.bets.reduce((sum: number, bet: any) => {
+      return sum + parseFloat(formatTinybarsToHbar(bet.stake));
+    }, 0);
+  }, [betsData, betsLoading]);
+
+  // Generate Torch Confidence Chart data - 31-bin confidence distribution
   const histogramData = useMemo(() => {
-    const buckets = 30; // More buckets for smoother histogram
-    const bucketSize = (maxPrice - minPrice) / buckets;
+    const bins = 31; // Torch specification: 31 bins
+    const binSize = (maxPrice - minPrice) / bins;
+    
+    if (betsLoading || !betsData?.bets) {
+      // Show loading placeholder
+      const data = [];
+      for (let i = 0; i < bins; i++) {
+        const binMin = minPrice + i * binSize;
+        const binMax = binMin + binSize;
+        const center = (binMin + binMax) / 2;
+
+        data.push({
+          min: binMin,
+          max: binMax,
+          center,
+          prob: 0, // confidence score (height)
+          totalStake: 0, // money supporting this region
+          rawScore: 0, // unnormalized influence
+          amount: 0, // for backward compatibility
+          isSelected: center >= selectedMin && center <= selectedMax,
+        });
+      }
+      return data;
+    }
+
+    // Calculate confidence distribution based on all active bets
     const data = [];
+    const totalStakeAcrossAllBets = betsData.bets.reduce((sum: number, bet: any) => {
+      return sum + parseFloat(formatTinybarsToHbar(bet.stake));
+    }, 0);
 
-    for (let i = 0; i < buckets; i++) {
-      const bucketMin = minPrice + i * bucketSize;
-      const bucketMax = bucketMin + bucketSize;
-      const bucketCenter = (bucketMin + bucketMax) / 2;
+    for (let i = 0; i < bins; i++) {
+      const binMin = minPrice + i * binSize;
+      const binMax = binMin + binSize;
+      const center = (binMin + binMax) / 2;
 
-      // Simulate bet distribution with a normal-like curve
-      const distanceFromCurrent = Math.abs(bucketCenter - currentPrice);
-      const maxDistance = (maxPrice - minPrice) / 2;
-      const normalizedDistance = distanceFromCurrent / maxDistance;
+      // Find bets that overlap with this price bin
+      const betsInBin = betsData.bets.filter((bet: any) => {
+        const betMinPrice = parseFloat(formatTinybarsToHbar(bet.priceMin));
+        const betMaxPrice = parseFloat(formatTinybarsToHbar(bet.priceMax));
+        return betMinPrice <= binMax && betMaxPrice >= binMin;
+      });
 
-      // Create a bell curve around current price
-      const betDensity = Math.exp(-Math.pow(normalizedDistance * 2, 2));
-      const betAmount = Math.floor((betDensity * totalBets) / 15) + Math.random() * 30;
+      // Calculate confidence metrics for this bin
+      const totalStakeInBin = betsInBin.reduce((sum: number, bet: any) => {
+        const stake = parseFloat(formatTinybarsToHbar(bet.stake));
+        const betMinPrice = parseFloat(formatTinybarsToHbar(bet.priceMin));
+        const betMaxPrice = parseFloat(formatTinybarsToHbar(bet.priceMax));
+        
+        // Weight stake by overlap with bin (more precise confidence calculation)
+        const overlapMin = Math.max(binMin, betMinPrice);
+        const overlapMax = Math.min(binMax, betMaxPrice);
+        const overlapRatio = Math.max(0, (overlapMax - overlapMin) / (betMaxPrice - betMinPrice));
+        
+        return sum + (stake * overlapRatio);
+      }, 0);
+
+      // Raw score - unnormalized influence
+      const rawScore = totalStakeInBin;
+      
+      // Confidence probability - normalized by total market stake
+      const prob = totalStakeAcrossAllBets > 0 ? (totalStakeInBin / totalStakeAcrossAllBets) : 0;
 
       data.push({
-        min: bucketMin,
-        max: bucketMax,
-        center: bucketCenter,
-        amount: betAmount,
-        isSelected: bucketCenter >= selectedMin && bucketCenter <= selectedMax,
+        min: binMin,
+        max: binMax,
+        center,
+        prob, // confidence score (height of bar)
+        totalStake: totalStakeInBin, // money supporting this region
+        rawScore, // unnormalized influence
+        amount: totalStakeInBin, // for backward compatibility
+        isSelected: center >= selectedMin && center <= selectedMax,
       });
     }
 
     return data;
-  }, [minPrice, maxPrice, currentPrice, totalBets, selectedMin, selectedMax]);
+  }, [minPrice, maxPrice, selectedMin, selectedMax, betsData, betsLoading]);
 
   const maxBetAmount = Math.max(...histogramData.map((d) => d.amount));
+  const maxProb = Math.max(...histogramData.map((d) => d.prob));
 
   const handleMinChange = (value: number) => {
-    if (value < minPrice) {
-      return;
-    }
-
-    const newMin = Math.min(value, selectedMax - 0.01);
+    // Allow values below minPrice for user flexibility
+    const newMin = Math.min(value, selectedMax - 0.0001);
     setSelectedMin(newMin);
     onRangeChange(newMin, selectedMax);
   };
 
   const handleMaxChange = (value: number) => {
-    if (value > maxPrice) {
-      return;
-    }
-
-    const newMax = Math.max(value, selectedMin + 0.01);
+    // Allow values above maxPrice for user flexibility
+    const newMax = Math.max(value, selectedMin + 0.0001);
     setSelectedMax(newMax);
     onRangeChange(selectedMin, newMax);
   };
@@ -121,7 +220,7 @@ export function PriceRangeSelector({
     setIsDraggingMax(false);
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isDraggingMin || isDraggingMax) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
@@ -135,31 +234,35 @@ export function PriceRangeSelector({
   return (
     <div className={cn('space-y-4', className)}>
       <div className="flex justify-between items-center">
-        <h3 className="text-sm font-medium text-medium-gray">Select Price Range</h3>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 border border-[#F5A623] text-[#F5A623] text-sm font-bold rounded-full flex items-center justify-center">
+            2
+          </div>
+          <h3 className="text-sm font-medium text-medium-gray">Select price range</h3>
+        </div>
 
         <span className="text-sm text-medium-gray">
-          Total bets: {totalBets.toLocaleString()} HBAR
+          Total volume: {totalVolumeHbar.toLocaleString(undefined, { maximumFractionDigits: 2 })}{' '}
+          HBAR
         </span>
       </div>
 
       {/* Histogram */}
       <div ref={containerRef} className="relative h-40 bg-neutral-900 rounded-lg  cursor-crosshair">
-        {/* Histogram bars */}
+        {/* Confidence distribution bars - 31 bins */}
         <div className="flex items-end justify-between h-full space-x-0.5">
-          {histogramData.map((bucket, index) => (
+          {histogramData.map((bin, index) => (
             <div
               key={index}
-              className={cn(
-                'flex-1 bg-vibrant-purple/30 rounded-t transition-all duration-200',
-                bucket.isSelected && 'bg-vibrant-purple'
-              )}
+              className={cn('flex-1 bg-[#3B2D72] rounded-t transition-all duration-200')}
               style={{
-                height: `${(bucket.amount / maxBetAmount) * 100}%`,
-                minHeight: '4px',
+                height: `${bin.prob > 0 ? Math.max(8, (bin.prob / maxProb) * 100) : 0}%`,
+                opacity: bin.isSelected ? 1 : 0.7,
               }}
             />
           ))}
         </div>
+
 
         {/* Current price indicator */}
         <div
@@ -178,7 +281,7 @@ export function PriceRangeSelector({
             isDraggingMin ? 'z-20' : 'z-10'
           )}
           style={{
-            left: `${((selectedMin - minPrice) / (maxPrice - minPrice)) * 100}%`,
+            left: `${Math.max(0, Math.min(100, ((selectedMin - minPrice) / (maxPrice - minPrice)) * 100))}%`,
           }}
           onMouseDown={(e) => handleMouseDown(e, true)}
         >
@@ -203,7 +306,7 @@ export function PriceRangeSelector({
             isDraggingMax ? 'z-20' : 'z-10'
           )}
           style={{
-            left: `${((selectedMax - minPrice) / (maxPrice - minPrice)) * 100}%`,
+            left: `${Math.max(0, Math.min(100, ((selectedMax - minPrice) / (maxPrice - minPrice)) * 100))}%`,
           }}
           onMouseDown={(e) => handleMouseDown(e, false)}
         >
@@ -221,12 +324,13 @@ export function PriceRangeSelector({
           </div>
         </div>
 
-        {/* Selected range highlight */}
+        {/* Selected range highlight - semitransparent area between sliders */}
         <div
-          className="absolute top-0 bottom-0 bg-vibrant-purple/20 pointer-events-none"
+          className="absolute top-0 bottom-0 pointer-events-none z-10"
           style={{
-            left: `${((selectedMin - minPrice) / (maxPrice - minPrice)) * 100}%`,
-            width: `${((selectedMax - selectedMin) / (maxPrice - minPrice)) * 100}%`,
+            left: `${Math.max(0, Math.min(100, ((selectedMin - minPrice) / (maxPrice - minPrice)) * 100))}%`,
+            width: `${Math.max(5, Math.min(100, ((selectedMax - selectedMin) / (maxPrice - minPrice)) * 100))}%`,
+            backgroundColor: 'rgba(200, 170, 255, 0.08)', // Much lighter purple with very low opacity
           }}
         />
       </div>
@@ -242,29 +346,75 @@ export function PriceRangeSelector({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="minPrice" className="block text-sm font-medium text-medium-gray mb-2 ">
-            Min Price
+            Min price
           </label>
           <input
             id="minPrice"
-            type="number"
-            step="0.0001"
-            min={minPrice}
-            value={selectedMin.toFixed(4)}
-            onChange={(e) => handleMinChange(parseFloat(e.target.value) || selectedMin)}
+            type="text"
+            inputMode="decimal"
+            value={minInputValue || selectedMin.toFixed(4)}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Allow only numbers, dots, and empty string (including leading zeros)
+              if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                setMinInputValue(value);
+                if (value !== '') {
+                  const numValue = parseFloat(value);
+                  if (!isNaN(numValue)) {
+                    handleMinChange(numValue);
+                  }
+                }
+              }
+            }}
+            onBlur={() => {
+              // Reset to computed value when losing focus if invalid
+              if (minInputValue === '') {
+                setMinInputValue('');
+              }
+            }}
+            onFocus={() => {
+              // Clear computed value when focusing to allow free typing
+              if (!minInputValue) {
+                setMinInputValue(selectedMin.toFixed(4));
+              }
+            }}
             className="w-full px-3 py-2 border border-input bg-neutral-900 rounded-md text-sm text-medium-gray"
           />
         </div>
         <div>
           <label htmlFor="maxPrice" className="block text-sm font-medium text-medium-gray mb-2">
-            Max Price
+            Max price
           </label>
           <input
             id="maxPrice"
-            type="number"
-            step="0.0001"
-            max={maxPrice}
-            value={selectedMax.toFixed(4)}
-            onChange={(e) => handleMaxChange(parseFloat(e.target.value) || selectedMax)}
+            type="text"
+            inputMode="decimal"
+            value={maxInputValue || selectedMax.toFixed(4)}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Allow only numbers, dots, and empty string (including leading zeros)
+              if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                setMaxInputValue(value);
+                if (value !== '') {
+                  const numValue = parseFloat(value);
+                  if (!isNaN(numValue)) {
+                    handleMaxChange(numValue);
+                  }
+                }
+              }
+            }}
+            onBlur={() => {
+              // Reset to computed value when losing focus if invalid
+              if (maxInputValue === '') {
+                setMaxInputValue('');
+              }
+            }}
+            onFocus={() => {
+              // Clear computed value when focusing to allow free typing
+              if (!maxInputValue) {
+                setMaxInputValue(selectedMax.toFixed(4));
+              }
+            }}
             className="w-full px-3 py-2 border border-input bg-neutral-900 rounded-md text-sm text-medium-gray"
           />
         </div>

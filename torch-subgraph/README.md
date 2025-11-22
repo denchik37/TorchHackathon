@@ -1,7 +1,7 @@
 # 🔥 Torch Subgraph
 > Subgraph for indexing the TorchPredictionMarket smart contract events on **Hedera**
 
-This repository defines the GraphQL schema, event mappings, and configurations for indexing the `BetPlaced`, `BetFinalized`, and `BetClaimed` events emitted by the Torch smart contracts.
+This repository defines the GraphQL schema, event mappings, and configurations for indexing the `BetPlaced`, `BetFinalized`, `BetClainmed`, `FeeCollected`, `AggregationCompleted`, `BucketPriceSet`, and `BatchProcessed` events emitted by the Torch smart contracts.
 
 ---
 
@@ -72,29 +72,53 @@ npm run deploy-local
 
 This subgraph indexes events related to prediction market lifecycle:
 
-| Event         | Description                                           |
-|---------------|-------------------------------------------------------|
-| `BetPlaced`   | Triggered when a user places a prediction bet         |
-| `BetFinalized`| Triggered when price is resolved and bets evaluated   |
-| `BetClaimed`  | Triggered when a user claims their winnings           |
+| Event                  | Description                                           |
+|------------------------|-------------------------------------------------------|
+| `BetPlaced`            | Triggered when a user places a prediction bet         |
+| `BetFinalized`         | Triggered when price is resolved and bets evaluated   |
+| `BetClaimed`           | Triggered when a user claims their winnings           |
+| `FeeCollected`         | Triggered when a fees is collected from a bet         |
+| `AggregationComplted`  | Triggered when a bucket is resolved                   |
+| `BucketPriceSet`       | Triggered when a bucket winnings price is set         |
+| `BatchProcessed`       | Triggered when a bucket is processed                  |
 
 
 ## 🔧 Schema (`schema.graphql`)
 
 ```graphql
+# ---------------- USER ----------------
 type User @entity(immutable: true) {
-  id: ID!                
+  id: ID!
+  bets: [Bet!]! @derivedFrom(field: "user")
+}
+
+type UserStats @entity(immutable: false) {
+  id: ID!
   totalBets: Int!
   totalWon: Int!
   totalStaked: BigInt!
   totalPayout: BigInt!
-  bets: [Bet!]! @derivedFrom(field: "user")
 }
 
-type Bet @entity(immutable: true) {
-  id: ID!                          
+# ---------------- BUCKET ----------------
+type Bucket @entity(immutable: false) {
+  id: ID!                    
+  totalBets: Int!
+  aggregationComplete: Boolean!
+  totalWinningWeight: BigInt!
+  nextProcessIndex: Int!
+  price: BigInt
+  bets: [Bet!]! @derivedFrom(field: "bucketRef")
+  betIds: [String!]!
+}
+
+
+# ---------------- BET ----------------
+type Bet @entity(immutable: false) {
+  id: ID!
   user: User!
   bucket: Int!
+  bucketRef: Bucket!
   stake: BigInt!
   priceMin: BigInt!
   priceMax: BigInt!
@@ -111,8 +135,9 @@ type Bet @entity(immutable: true) {
   transactionHash: Bytes!
 }
 
+# ---------------- FEE ----------------
 type Fee @entity(immutable: true) {
-  id: ID!                          
+  id: ID!
   amount: BigInt!
   blockNumber: BigInt!
   timestamp: BigInt!

@@ -16,7 +16,7 @@ This feature automatically displays and updates HBAR prices in USD using the Coi
 - Fetches HBAR price data from CoinGecko API
 - Handles loading and error states
 - Auto-updates every 30 seconds
-- Returns: `{ price, priceChangePercentage24h, isLoading, error }`
+- Returns: `{ price, priceChangePercentage, isLoading, error }`
 
 ### `HbarPriceDisplay` Component
 - Reusable component for displaying HBAR prices
@@ -40,7 +40,7 @@ This feature automatically displays and updates HBAR prices in USD using the Coi
 />
 
 // Using the hook directly
-const { price, priceChangePercentage24h, isLoading, error } = useHbarPrice();
+const { price, priceChangePercentage, isLoading, error } = useHbarPrice();
 ```
 
 ## API Integration

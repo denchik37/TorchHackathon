@@ -15,13 +15,22 @@ This repository contains the smart contracts for a **quality-weighted prediction
 ## 🌐 Live Deployments
 
 ### **🔥 Mainnet - Production Ready**
+<<<<<<< HEAD
 > **Contract Address (Hedera)**: `0.0.10104147`  
 > **Contract Address (EVM)**: `0x15015770b8D5177FB642e58F5de7F3B01040c9f0`  
 > **Total Bets**: **100 live bets**  
 > **Status**: ✅ **Live and Active**  
 > **View on HashScan**: [https://hashscan.io/mainnet/contract/0.0.10104147](https://hashscan.io/mainnet/contract/0.0.10104147)
+=======
+
+> **Contract Address**: `0.0.10096249`  
+> **Total Bets**: **200+ bets placed**  
+> **Status**: ✅ **Live and Active**  
+> **View on HashScan**: [https://hashscan.io/mainnet/contract/0.0.10096249/calls?p=1&k=1754665751.622824115](https://hashscan.io/mainnet/contract/0.0.10096249/calls?p=1&k=1754665751.622824115)
+>>>>>>> 9b66897e863403e661a7233b83747881d4efff92
 
 ### **🧪 Testnet - Extensive Testing**
+
 > **Contract Address**: `0.0.6363532`  
 > **Hedera Used**: **240+ HBAR** for comprehensive testing  
 > **Ethereum Address**: `0x8611e91d4d111fdc44b9a20f9249e18751c8f9bf`  
@@ -41,17 +50,20 @@ This repository contains the smart contracts for a **quality-weighted prediction
 ## 🛠️ Tech Stack
 
 ### **Primary Framework: Hardhat**
+
 - **Hardhat** - Ethereum development environment
 - **Node.js** - JavaScript runtime
 - **ethers.js** - Ethereum library
 - **@openzeppelin/contracts** - Secure smart contract libraries
 
 ### **Secondary Framework: Foundry**
+
 - **Foundry** - Rust-based Ethereum toolkit
 - **Forge** - Testing and deployment
 - **Cast** - Command-line interactions
 
 ### **Blockchain: Hedera**
+
 - **Hedera Hashgraph** - Enterprise-grade DLT
 - **Hedera JSON-RPC Relay** - Network interaction
 - **HashScan** - Block explorer integration
@@ -84,11 +96,13 @@ smartContracts/
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js (v16+)
 - npm or yarn
 - Git
 
 ### 1. Clone & Install
+
 ```bash
 git clone <your-repo-url>
 cd smartContracts
@@ -96,12 +110,14 @@ npm install
 ```
 
 ### 2. Environment Setup
+
 ```bash
 cp .env.example .env
 # Edit .env with your Hedera testnet credentials
 ```
 
 ### 3. Run Tests
+
 ```bash
 # Hardhat tests
 npx hardhat test
@@ -112,6 +128,7 @@ forge test
 ```
 
 ### 4. Deploy Contracts
+
 ```bash
 # Deploy to testnet
 npx hardhat deploy-torch --network testnet
@@ -123,6 +140,7 @@ npx hardhat deploy-test-torch --network testnet
 ## 🎯 Core Contracts
 
 ### **TorchPredictionMarket.sol**
+
 The main prediction market contract featuring:
 
 - **Quality Weighting System**: Bets weighted by prediction sharpness and time horizon
@@ -131,6 +149,7 @@ The main prediction market contract featuring:
 - **Event System**: Comprehensive event logging for frontend integration
 
 ### **Key Functions**
+
 ```solidity
 // Place a bet on future TORCH price
 function placeBet(
@@ -150,6 +169,7 @@ function claimBet(uint256 betId) external
 ## 🛠️ Development Scripts
 
 ### **Deployment Scripts**
+
 ```bash
 # Deploy main contract
 npx hardhat deploy-torch --network testnet
@@ -162,6 +182,7 @@ npx hardhat deploy-contract --network testnet
 ```
 
 #### **Interaction Scripts**
+
 ```bash
 # Place a bet
 npx hardhat place-bet --contract-address 0x... --target-timestamp 1234567890 --price-min 100 --price-max 200 --stake-amount 1000000000000000000
@@ -177,6 +198,7 @@ npx hardhat set-bucket-price --contract-address 0x... --bucket 1 --price 150
 ```
 
 #### **Testing & Debug Scripts**
+
 ```bash
 # Test contract interaction
 npx hardhat interact-test-torch --contract-address 0x...
@@ -192,6 +214,7 @@ npx hardhat simple-test --contract-address 0x...
 ```
 
 #### **Utility Scripts**
+
 ```bash
 # Show account balance
 npx hardhat show-balance
@@ -204,6 +227,7 @@ npx hardhat contract-call --contract-address 0x... --msg "Hello World"
 ```
 
 ### **📁 Available Scripts**
+
 ```
 scripts/
 ├── 🚀 Deployment
@@ -234,6 +258,7 @@ scripts/
 > **💡 Pro Tip**: For advanced smart contract interactions and gas optimization, we **recommend using Foundry scripts**. Foundry provides faster execution, better gas estimation, and more precise control over contract interactions.
 
 #### **Foundry Scripts Example**
+
 ```bash
 cd Foundry
 
@@ -250,6 +275,7 @@ cast send <contract-address> "placeBet(uint256,uint256,uint256,uint256)" \
 ```
 
 #### **Why Foundry for Interactions?**
+
 - **⚡ Faster Execution**: Rust-based performance
 - **🎯 Precise Gas Estimation**: Better gas optimization
 - **🔧 Lower Level Control**: Direct ABI interactions
@@ -259,6 +285,7 @@ cast send <contract-address> "placeBet(uint256,uint256,uint256,uint256)" \
 ## 🔧 Configuration
 
 ### **Hardhat Configuration**
+
 ```javascript
 // hardhat.config.js
 module.exports = {
@@ -266,13 +293,14 @@ module.exports = {
   networks: {
     testnet: {
       url: process.env.TESTNET_RPC_URL,
-      accounts: [process.env.TESTNET_OPERATOR_PRIVATE_KEY]
-    }
-  }
-}
+      accounts: [process.env.TESTNET_OPERATOR_PRIVATE_KEY],
+    },
+  },
+};
 ```
 
 ### **Foundry Configuration**
+
 ```toml
 # Foundry/foundry.toml
 [profile.default]
@@ -288,6 +316,7 @@ mainnet = "${MAINNET_RPC_URL}"
 ## 🧪 Testing
 
 ### **Hardhat Tests**
+
 ```bash
 # Run all tests
 npx hardhat test
@@ -300,6 +329,7 @@ REPORT_GAS=true npx hardhat test
 ```
 
 ### **Foundry Tests**
+
 ```bash
 cd Foundry
 forge test
@@ -309,10 +339,12 @@ forge test --gas-report
 ## 🌐 Network Integration
 
 ### **Hedera Networks**
+
 - **Testnet**: `https://testnet.hashio.io/api`
 - **Mainnet**: `https://mainnet.hashio.io/api`
 
 ### **HashScan Integration**
+
 - **Testnet**: https://hashscan.io/testnet
 - **Mainnet**: https://hashscan.io
 
@@ -326,13 +358,13 @@ forge test --gas-report
 
 ## 📊 Contract Parameters
 
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| `FEE_BPS` | 50 | 0.5% fee in basis points |
-| `MIN_STAKE` | 0.01 ether | Minimum bet amount |
-| `MAX_STAKE` | 100 ether | Maximum bet amount |
-| `MAX_DAYS_AHEAD` | 30 | Maximum days to bet ahead |
-| `BATCH_SIZE` | 50 | Bets processed per batch |
+| Parameter        | Value      | Description               |
+| ---------------- | ---------- | ------------------------- |
+| `FEE_BPS`        | 50         | 0.5% fee in basis points  |
+| `MIN_STAKE`      | 0.01 ether | Minimum bet amount        |
+| `MAX_STAKE`      | 100 ether  | Maximum bet amount        |
+| `MAX_DAYS_AHEAD` | 30         | Maximum days to bet ahead |
+| `BATCH_SIZE`     | 50         | Bets processed per batch  |
 
 ## 🤝 Contributing
 

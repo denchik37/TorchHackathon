@@ -38,7 +38,7 @@ export function formatDateUTC(date: number): string {
 }
 
 export function formatTinybarsToHbar(tinybars: number | string, fractionDigits = 6) {
-  const hbar = Number(tinybars) / 10000;
+  const hbar = Number(tinybars) / 100000000;
   return hbar.toFixed(fractionDigits);
 }
 
@@ -49,4 +49,13 @@ export function getRemainingDaysBetweenTimestamps(startTimestamp: number, endTim
 
   const msInDay = 1000 * 60 * 60 * 24;
   return Math.ceil(diffMs / msInDay);
+}
+
+export function getRemainingDaysFromNow(targetTimestamp: number) {
+  const nowMs = Date.now();
+  const targetMs = Number(targetTimestamp) * 1000;
+  const diffMs = targetMs - nowMs;
+
+  const msInDay = 1000 * 60 * 60 * 24;
+  return Math.max(0, Math.ceil(diffMs / msInDay));
 }

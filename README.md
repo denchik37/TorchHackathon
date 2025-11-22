@@ -16,6 +16,7 @@
 - [🏁 Hackathon Scope](#hackathon-scope)
 - [🧱 Monorepo Structure](#-monorepo-structure)
 - [📁 Projects Overview](#-projects-overview)
+- [💻 Tech Stack](#-tech-stack)
 - [📚 How It Works: TorchPredictionMarket Step-by-Step](#-how-it-works-torchpredictionmarket-step-by-step)
   - [🧾 Step 1: Place Bets](#-step-1-place-bets)
   - [🧮 Step 2: Weighting Bets Based on Precision](#-step-2-weighting-bets-based-on-precision)
@@ -88,6 +89,68 @@ torchpredictionmarket/
 | [`frontend/`](./frontend) | React frontend with wallet connect, core integration of Smart Contract & Subgraph, prediction UI |
 | [`smartContracts/`](./smartContracts) | Core Solidity smart contracts for placing, resolving, and claiming predictions |
 | [`torch-subgraph/`](./torch-subgraph) | Graph protocol subgraph for indexing `BetPlaced`, `BetFinalized`, and `BetClaimed` events |
+
+--- 
+
+#
+
+## 💻 Tech Stack
+
+### Primary Development Framework: Hardhat
+
+- **Hardhat** - EVM development environment and testing framework
+- **Javascript** - Scripts to test smart contracts.
+- **Solidity** - Smart contract programming language (version ^0.8.0)
+
+### Secondary Development Framework: Foundry
+
+- **Foundry** - Alternative EVM development toolkit (Rust-based)
+- **Forge** - Foundry's testing and deployment tool
+- **Cast** - Foundry's command-line tool for interacting with smart contracts
+
+### Blockchain Network:  **Hedera**
+
+- **Hedera Hashgraph** - The target blockchain network
+- **Hedera JSON-RPC Relay** - For interacting with Hedera network
+- **Hedera Local Node** - For local development and testing
+- **HashScan for Transaction Monitoring** - Track your smart contract deployments and interactions
+- **HashScan for Transaction History** - Users can view their betting history and results
+
+
+### Frontend:
+
+- **React.js & Next.js** - frontend frameworks for building user interfaces and server-side rendering
+- **TypeScript** - for typed JavaScript development, improving code quality and maintainability
+- **GraphQL Apollo Client** - to fetch queries and manage data state in the frontend
+- **CoinGecko API** - to retrieve real-time cryptocurrency market data and price feeds
+- **Clerk** - authentication and user management for admin access
+
+### Backend:
+
+- GraphQL/Protocol** - for indexing smart contract data & building Subgraphs.
+- Graph Node** - running on a VPS, to index Hedera network smart contract events.
+
+### Data Storage & Querying:
+
+- **PostgreSQL** - database for graph-node’s indexing data.
+- **IPFS** - decentralized storage used by the graph for metadata and manifests.
+
+### Development/Tools:
+
+- **Typescript & AssemblyScript**
+- **Node.js**
+- **Docker** / **Docker Compose**
+
+### Version Control & Deployment:
+
+- **Github**
+- **Hetzner VPS**
+- **Vercel**
+  
+### Hosting
+
+- Vercel {frontend}
+-Hetzner VPS {Subgraph Local Node}
 
 ---
 

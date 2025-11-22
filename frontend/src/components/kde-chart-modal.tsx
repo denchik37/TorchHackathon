@@ -66,9 +66,14 @@ export function KDEChartModal({ currentPrice, isOpen, onClose }: KDEChartModalPr
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-neutral-700 bg-neutral-800/50">
           <div className="flex items-center gap-4">
-            <h2 className="text-lg font-semibold text-neutral-200">
-              KDE Chart - Detailed View
-            </h2>
+            <div>
+              <h2 className="text-lg font-semibold text-neutral-200">
+                HBAR price × time probability
+              </h2>
+              <p className="text-sm text-neutral-400 mt-1">
+                Aggregated market expectations.
+              </p>
+            </div>
             <div className="flex items-center gap-2 text-xs text-neutral-400">
               <span>Current Price: ${currentPrice.toFixed(4)}</span>
               {currentTransform && (
@@ -77,36 +82,6 @@ export function KDEChartModal({ currentPrice, isOpen, onClose }: KDEChartModalPr
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Layer Controls */}
-            <div className="flex items-center gap-1 mr-4">
-              <Button
-                variant={showDensity ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowDensity(!showDensity)}
-                className="text-xs h-8 px-2 text-neutral-400 hover:text-neutral-200 border-neutral-600 hover:border-neutral-500"
-              >
-                <Eye className="h-3 w-3 mr-1" />
-                Density
-              </Button>
-              <Button
-                variant={showConfidence ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowConfidence(!showConfidence)}
-                className="text-xs h-8 px-2 text-neutral-400 hover:text-neutral-200 border-neutral-600 hover:border-neutral-500"
-              >
-                <Eye className="h-3 w-3 mr-1" />
-                Confidence
-              </Button>
-              <Button
-                variant={showMarkers ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowMarkers(!showMarkers)}
-                className="text-xs h-8 px-2 text-neutral-400 hover:text-neutral-200 border-neutral-600 hover:border-neutral-500"
-              >
-                <Eye className="h-3 w-3 mr-1" />
-                Markers
-              </Button>
-            </div>
             
             {/* Zoom Controls */}
             <div className="flex items-center gap-1 mr-4">
@@ -146,15 +121,6 @@ export function KDEChartModal({ currentPrice, isOpen, onClose }: KDEChartModalPr
             
             {/* Action Buttons */}
             <div className="flex items-center gap-1 mr-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownload}
-                className="text-neutral-400 hover:text-neutral-200 border-neutral-600 hover:border-neutral-500 h-8 w-8 p-0"
-                title="Download Chart"
-              >
-                <Download className="h-4 w-4" />
-              </Button>
               <Button
                 variant={showInfo ? "default" : "outline"}
                 size="sm"
@@ -240,15 +206,6 @@ export function KDEChartModal({ currentPrice, isOpen, onClose }: KDEChartModalPr
                 title="Toggle Info"
               >
                 <Info className="h-3 w-3" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownload}
-                className="text-xs h-6 w-6 p-0 text-neutral-400 hover:text-neutral-200 border-neutral-600 hover:border-neutral-500"
-                title="Download"
-              >
-                <Download className="h-3 w-3" />
               </Button>
             </div>
           </div>

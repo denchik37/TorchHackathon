@@ -1,66 +1,88 @@
-import { BigInt, Address, log } from "@graphprotocol/graph-ts"
+import { BigInt, Address } from "@graphprotocol/graph-ts"
 import {
   BetPlaced,
   BetFinalized,
   BetClaimed,
   FeeCollected,
+  AggregationCompleted,
+  BucketPriceSet,
+  BatchProcessed,
   TorchPredictionMarket
 } from "../generated/TorchPredictionMarket/TorchPredictionMarket"
-import { User, UserStats, Bet, Fee } from "../generated/schema"
+import { User, UserStats, Bet, Fee, Bucket } from "../generated/schema"
 
-// Helper to load or create immutable User + mutable UserStats
+/** -------- Helper: Create/Load User + Stats -------- */
 function getOrCreateUser(address: Address): UserStats {
-  let userId = address.toHexString()
+  let id = address.toHexString()
 
-  // Immutable user
-  let user = User.load(userId)
-  if (user == null) {
-    log.info("[User] Creating new User entity: {}", [userId])
-    user = new User(userId)
+  let user = User.load(id)
+  if (!user) {
+    user = new User(id)
     user.save()
-  } else {
-    log.info("[User] Found existing User entity: {}", [userId])
   }
 
-  // Mutable stats
-  let stats = UserStats.load(userId)
-  if (stats == null) {
-    log.info("[UserStats] Creating new UserStats for: {}", [userId])
-    stats = new UserStats(userId)
+  let stats = UserStats.load(id)
+  if (!stats) {
+    stats = new UserStats(id)
     stats.totalBets = 0
     stats.totalWon = 0
     stats.totalStaked = BigInt.zero()
     stats.totalPayout = BigInt.zero()
-  } else {
-    log.info("[UserStats] Loaded existing UserStats for: {}", [userId])
+    stats.save()
   }
 
   return stats
 }
 
-// BetPlaced
-export function handleBetPlaced(event: BetPlaced): void {
-  log.info("[BetPlaced] Handling bet from user {} with betId {}", [
-    event.params.bettor.toHexString(),
-    event.params.betId.toString()
-  ])
+/** -------- Helper: Update UserStats -------- */
+function updateUserStats(userId: string, won: boolean, payout: BigInt | null): void {
+  let stats = UserStats.load(userId)
+  if (!stats) return
+  if (won) stats.totalWon += 1
+  stats.totalPayout = stats.totalPayout.plus(payout ? payout : BigInt.zero())
+  stats.save()
+}
 
+/** -------- Event: BetPlaced -------- */
+export function handleBetPlaced(event: BetPlaced): void {
   let stats = getOrCreateUser(event.params.bettor)
 
-  // Bind contract to call getBet()
   let contract = TorchPredictionMarket.bind(event.address)
-  let betDataResult = contract.try_getBet(event.params.betId)
-  if (betDataResult.reverted) {
-    log.warning("[BetPlaced] Contract call getBet({}) reverted", [event.params.betId.toString()])
-    return
-  }
-  let betData = betDataResult.value
+  let betResult = contract.try_getBet(event.params.betId)
+  if (betResult.reverted) return
+  let betData = betResult.value
 
   let betId = event.params.betId.toString()
   let bet = new Bet(betId)
-
   bet.user = event.params.bettor.toHexString()
+
+  // ---- Bucket ----
+  let bucketId = event.params.bucket.toString()
+  let bucket = Bucket.load(bucketId)
+  if (!bucket) {
+    bucket = new Bucket(bucketId)
+    bucket.totalBets = 0
+    bucket.aggregationComplete = false
+    bucket.totalWinningWeight = BigInt.zero()
+    bucket.nextProcessIndex = 0
+    bucket.betIds = []
+    bucket.price = null
+  }
+  
+  // Safely append new betId
+  let betIds = bucket.betIds
+  if (!betIds) {
+    betIds = []
+  }
+  bucket.betIds = betIds.concat([betId])
+  
+  bucket.totalBets += 1
+  bucket.save()
+
   bet.bucket = event.params.bucket.toI32()
+  bet.bucketRef = bucketId
+
+  // ---- Bet Data ----
   bet.stake = betData.stake
   bet.priceMin = betData.priceMin
   bet.priceMax = betData.priceMax
@@ -71,7 +93,7 @@ export function handleBetPlaced(event: BetPlaced): void {
   bet.claimed = betData.claimed
   bet.actualPrice = betData.actualPrice
   bet.won = betData.won
-  bet.payout = BigInt.zero()  // payout is likely zero until finalized/claimed
+  bet.payout = BigInt.zero()
 
   bet.blockNumber = event.block.number
   bet.timestamp = event.block.timestamp
@@ -79,116 +101,111 @@ export function handleBetPlaced(event: BetPlaced): void {
 
   bet.save()
 
-  log.info("[BetPlaced] Saved Bet entity {} for user {}", [
-    betId,
-    event.params.bettor.toHexString()
-  ])
-
-  // Update stats
+  // ---- Stats Update ----
   stats.totalBets += 1
   stats.totalStaked = stats.totalStaked.plus(bet.stake)
   stats.save()
-
-  log.info("[BetPlaced] Updated UserStats for {} | totalBets={} totalStaked={}", [
-    event.params.bettor.toHexString(),
-    stats.totalBets.toString(),
-    stats.totalStaked.toString()
-  ])
 }
 
-// BetFinalized (no changes needed)
-export function handleBetFinalized(event: BetFinalized): void {
-  log.info("[BetFinalized] betId={} actualPrice={} won={} payout={}", [
-    event.params.betId.toString(),
-    event.params.actualPrice.toString(),
-    event.params.won ? "true" : "false",
-    event.params.payout.toString()
-  ])
+/** -------- Event: BatchProcessed -------- */
+export function handleBatchProcessed(event: BatchProcessed): void {
+  let bucketId = event.params.bucket.toString()
+  let bucket = Bucket.load(bucketId)
+  if (!bucket) return
 
-  let betId = event.params.betId.toString()
-  let bet = Bet.load(betId)
-  if (bet == null) {
-    log.warning("[BetFinalized] Bet {} not found", [betId])
-    return
+  let contract = TorchPredictionMarket.bind(event.address)
+
+  let startIndex = bucket.nextProcessIndex
+  let endIndex = startIndex + event.params.processedCount.toI32()
+
+  // loop over stored bet IDs
+  for (let i = startIndex; i < endIndex; i++) {
+    if (i >= bucket.betIds.length) break
+    let betId = bucket.betIds[i]
+    let bet = Bet.load(betId)
+    if (!bet) continue
+
+    let betResult = contract.try_getBet(BigInt.fromString(betId))
+    if (betResult.reverted) continue
+    let betData = betResult.value
+
+    bet.finalized = betData.finalized
+    bet.actualPrice = betData.actualPrice
+    bet.won = betData.won
+    bet.payout = betData.won ? betData.weight : BigInt.zero()
+    bet.save()
+
+    if (bet.won) updateUserStats(bet.user, true, bet.payout)
   }
 
-  bet.finalized = true
-  bet.actualPrice = event.params.actualPrice
-  bet.won = event.params.won
-  bet.payout = event.params.payout
-  bet.save()
-
-  log.info("[BetFinalized] Updated Bet {} as finalized", [betId])
-
-  if (event.params.won) {
-    let stats = UserStats.load(bet.user)
-    if (stats) {
-      stats.totalWon += 1
-      stats.totalPayout = stats.totalPayout.plus(event.params.payout)
-      stats.save()
-
-      log.info("[BetFinalized] User {} won | totalWon={} totalPayout={}", [
-        bet.user,
-        stats.totalWon.toString(),
-        stats.totalPayout.toString()
-      ])
-    } else {
-      log.warning("[BetFinalized] No UserStats found for winner {}", [bet.user])
-    }
-  }
+  bucket.totalWinningWeight = bucket.totalWinningWeight.plus(event.params.winningWeight)
+  bucket.nextProcessIndex = endIndex
+  if (bucket.nextProcessIndex >= bucket.totalBets) bucket.aggregationComplete = true
+  bucket.save()
 }
 
-// BetClaimed
+/** -------- Event: AggregationCompleted -------- */
+export function handleAggregationCompleted(event: AggregationCompleted): void {
+  let bucket = Bucket.load(event.params.bucket.toString())
+  if (!bucket) return
+
+  bucket.aggregationComplete = true
+  bucket.save()
+}
+
+/** -------- Event: BetClaimed -------- */
 export function handleBetClaimed(event: BetClaimed): void {
-  log.info("[BetClaimed] betId={} claimed by {}", [
-    event.params.betId.toString(),
-    event.params.bettor.toHexString()
-  ])
-
-  let betId = event.params.betId.toString()
-  let bet = Bet.load(betId)
-  if (bet == null) {
-    log.warning("[BetClaimed] Bet {} not found", [betId])
-    return
-  }
+  let bet = Bet.load(event.params.betId.toString())
+  if (!bet) return
 
   bet.claimed = true
-  bet.payout = event.params.payout
   bet.save()
 
-  // Update user stats payout
-  let stats = UserStats.load(event.params.bettor.toHexString())
-  if (stats == null) {
-    log.warning("[BetClaimed] No UserStats found for user {}", [event.params.bettor.toHexString()])
-    return
-  }
-  stats.totalPayout = stats.totalPayout.plus(event.params.payout)
-  stats.save()
-
-  log.info("[BetClaimed] Bet {} marked as claimed, updated payout for user {}", [
-    betId,
-    event.params.bettor.toHexString()
-  ])
+  let payout = event.params.payout ? event.params.payout : BigInt.zero()
+  updateUserStats(event.params.bettor.toHexString(), bet.won, payout)
 }
 
-// FeeCollected
+/** -------- Event: FeeCollected -------- */
 export function handleFeeCollected(event: FeeCollected): void {
-  let feeId = event.transaction.hash
-    .toHex()
-    .concat("-")
-    .concat(event.logIndex.toString())
+  let id = `${event.transaction.hash.toHex()}-${event.logIndex.toString()}`
+  let fee = new Fee(id)
 
-  log.info("[FeeCollected] id={} amount={}", [
-    feeId,
-    event.params.amount.toString()
-  ])
-
-  let fee = new Fee(feeId)
   fee.amount = event.params.amount
   fee.blockNumber = event.block.number
   fee.timestamp = event.block.timestamp
   fee.transactionHash = event.transaction.hash
-  fee.save()
 
-  log.info("[FeeCollected] Saved Fee entity {}", [feeId])
+  fee.save()
+}
+
+/** -------- Event: BucketPriceSet -------- */
+export function handleBucketPriceSet(event: BucketPriceSet): void {
+  let bucketId = event.params.bucket.toString()
+  let bucket = Bucket.load(bucketId)
+
+  if (!bucket) {
+    bucket = new Bucket(bucketId)
+    bucket.totalBets = 0
+    bucket.totalWinningWeight = BigInt.zero()
+    bucket.nextProcessIndex = 0
+    bucket.aggregationComplete = false
+    bucket.betIds = []
+  }
+
+  bucket.price = event.params.price
+  bucket.save()
+}
+
+/** -------- Event: BetFinalized (optional) -------- */
+export function handleBetFinalized(event: BetFinalized): void {
+  let bet = Bet.load(event.params.betId.toString())
+  if (!bet) return
+
+  bet.finalized = true
+  bet.actualPrice = event.params.actualPrice
+  bet.won = event.params.won
+  bet.payout = event.params.won ? event.params.payout : BigInt.zero()
+  bet.save()
+
+  if (bet.won) updateUserStats(bet.user, true, bet.payout)
 }

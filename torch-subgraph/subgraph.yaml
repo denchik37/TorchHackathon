@@ -8,17 +8,19 @@ dataSources:
     name: TorchPredictionMarket
     network: mainnet
     source:
-      address: "0x106d7759f06eb02e339838461531c6f8f3f7aef3"
+      address: "0x15015770b8d5177fb642e58f5de7f3b01040c9f0"
       abi: TorchPredictionMarket
-      startBlock: 82977547
+      startBlock: 87248805
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
       language: wasm/assemblyscript
       entities:
         - User
+        - UserStats
         - Bet
         - Fee
+        - Bucket
       abis:
         - name: TorchPredictionMarket
           file: ./abis/TorchPredictionMarket.json
@@ -31,4 +33,10 @@ dataSources:
           handler: handleBetClaimed
         - event: FeeCollected(uint256)
           handler: handleFeeCollected
+        - event: AggregationCompleted(indexed uint256,uint256)
+          handler: handleAggregationCompleted
+        - event: BucketPriceSet(indexed uint256,uint256)
+          handler: handleBucketPriceSet
+        - event: BatchProcessed(indexed uint256,uint256,uint256)
+          handler: handleBatchProcessed 
       file: ./src/mappings.ts
