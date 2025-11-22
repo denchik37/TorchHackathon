@@ -15,10 +15,11 @@ This repository contains the smart contracts for a **quality-weighted prediction
 ## 🌐 Live Deployments
 
 ### **🔥 Mainnet - Production Ready**
-> **Contract Address**: `0.0.9570085`  
-> **Total Bets**: **200+ bets placed**  
+> **Contract Address (Hedera)**: `0.0.10104147`  
+> **Contract Address (EVM)**: `0x15015770b8D5177FB642e58F5de7F3B01040c9f0`  
+> **Total Bets**: **100 live bets**  
 > **Status**: ✅ **Live and Active**  
-> **View on HashScan**: [https://hashscan.io/mainnet/contract/0.0.9570085/calls?p=1&k=1754665751.622824115](https://hashscan.io/mainnet/contract/0.0.9570085/calls?p=1&k=1754665751.622824115)
+> **View on HashScan**: [https://hashscan.io/mainnet/contract/0.0.10104147](https://hashscan.io/mainnet/contract/0.0.10104147)
 
 ### **🧪 Testnet - Extensive Testing**
 > **Contract Address**: `0.0.6363532`  
@@ -35,7 +36,7 @@ This repository contains the smart contracts for a **quality-weighted prediction
 - **🛡️ Enterprise Security**: OpenZeppelin patterns (ReentrancyGuard, Ownable, Pausable)
 - **🔧 Dual Framework**: Development with both **Hardhat** and **Foundry**
 - **🌐 Hedera Integration**: Built for Hedera's enterprise-grade blockchain
-- **📊 Proven Track Record**: 200+ bets on mainnet, extensive testnet validation
+- **📊 Proven Track Record**: 100 live bets on mainnet, extensive testnet validation
 
 ## 🛠️ Tech Stack
 
