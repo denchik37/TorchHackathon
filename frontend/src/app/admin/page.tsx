@@ -25,15 +25,15 @@ import NoWalletConnectedContainer from '@/components/no-wallet-connected-contain
 import TorchPredictionMarketABI from '../../../abi/TorchPredictionMarket.json';
 
 const GET_BETS = gql`
-  query GetBetsForDate($startTime: Int!, $endTime: Int!) {
+  query GetAllIncompleteBets {
     bets(
       where: {
-        targetTimestamp_gte: $startTime
-        targetTimestamp_lte: $endTime
         bucketRef_: { aggregationComplete: false }
+        finalized: false
       }
-      orderBy: targetTimestamp
+      orderBy: bucket
       orderDirection: asc
+      first: 1000
     ) {
       id
       stake
@@ -70,32 +70,27 @@ function AdminPage() {
   // Toast notifications
   const { toast } = useToast();
 
-  // Date selection - default to today
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  // State management
   const [resolutionPrices, setResolutionPrices] = useState<[number, number][]>([]);
   const [manualPrices, setManualPrices] = useState<Map<number, string>>(new Map());
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Calculate date range for the selected day
-  const getDateRange = () => {
-    const start = new Date(selectedDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(selectedDate);
-    end.setDate(end.getDate() + 1);
-    end.setHours(0, 0, 0, 0);
-
-    return {
-      startTime: Math.floor(start.getTime() / 1000),
-      endTime: Math.floor(end.getTime() / 1000),
-    };
-  };
-
-  const { startTime, endTime } = getDateRange();
+  const [selectedBucket, setSelectedBucket] = useState<string>('all');
 
   const { data, loading, refetch } = useQuery(GET_BETS, {
-    variables: { startTime, endTime },
     skip: !isLoaded || !isSignedIn || !isAdmin,
   });
+
+  // Get available buckets for filtering
+  const availableBuckets = data?.bets ? 
+    Array.from(new Set(data.bets.map((bet: Bet) => bet.bucket.toString()))).sort((a, b) => Number(a) - Number(b))
+    : [];
+
+  // Filter bets by selected bucket
+  const filteredBets = data?.bets ? 
+    selectedBucket === 'all' 
+      ? data.bets 
+      : data.bets.filter((bet: Bet) => bet.bucket.toString() === selectedBucket)
+    : [];
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !isAdmin || loading) return;
@@ -168,9 +163,30 @@ function AdminPage() {
   const submitPrices = async () => {
     setIsSubmitting(true);
     try {
-      // Get unique timestamps
+      // Determine which bets to process based on selected bucket
+      const betsToProcess = selectedBucket === 'all' ? data.bets : filteredBets;
+      
+      if (!betsToProcess || betsToProcess.length === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'No bets to process',
+          description: 'Please select a bucket with bets.',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Get unique buckets from the bets we're processing
+      const bucketsToProcess = Array.from(new Set(betsToProcess.map((bet: Bet) => bet.bucket)));
+      
+      // For each bucket, we need ALL bets in that bucket (not just visible ones)
+      const allBetsInBuckets = data.bets.filter((bet: Bet) => 
+        bucketsToProcess.includes(bet.bucket)
+      );
+      
+      // Get unique timestamps from ALL bets in the buckets being processed
       const uniqueTimestamps = Array.from(
-        new Set(data.bets.map((bet: Bet) => bet.targetTimestamp))
+        new Set(allBetsInBuckets.map((bet: Bet) => bet.targetTimestamp))
       );
 
       // Filter timestamps that have prices
@@ -179,7 +195,11 @@ function AdminPage() {
         .sort((a, b) => (a as number) - (b as number));
 
       if (timestampsWithPrices.length === 0) {
-        alert('No prices to submit');
+        toast({
+          variant: 'destructive',
+          title: 'No prices to submit',
+          description: 'Please enter prices for the bets.',
+        });
         setIsSubmitting(false);
         return;
       }
@@ -189,21 +209,21 @@ function AdminPage() {
         (ts) => getFinalPrice(ts as number) === null
       );
 
-      console.log('Timestamps without prices:', timestampsWithoutPrices);
-
       if (timestampsWithoutPrices.length > 0) {
-        // Log bets without prices
-        const betsWithoutPrices = data.bets.filter((bet: Bet) =>
+        const betsWithoutPrices = allBetsInBuckets.filter((bet: Bet) =>
           timestampsWithoutPrices.includes(bet.targetTimestamp)
         );
-        console.log('=== BETS WITHOUT PRICES ===');
         console.log('Bets missing prices:', betsWithoutPrices);
-        console.log('===========================');
 
-        const missingTimestamps = timestampsWithoutPrices
-          .map((ts) => new Date((ts as number) * 1000).toISOString())
-          .join(', ');
+        const missingInfo = betsWithoutPrices.map((bet: Bet) => 
+          `Bet ${bet.id} (Bucket ${bet.bucket}, ${new Date(bet.targetTimestamp * 1000).toLocaleString()})`
+        ).join(', ');
 
+        toast({
+          variant: 'destructive',
+          title: 'Missing prices',
+          description: `Cannot proceed - prices missing for: ${missingInfo}`,
+        });
         setIsSubmitting(false);
         return;
       }
@@ -215,8 +235,8 @@ function AdminPage() {
         return parseUnits(price.toFixed(8), 8).toString();
       });
 
-      // Get unique bucket indices from bets data
-      const uniqueBuckets = Array.from(new Set(data.bets.map((bet: Bet) => bet.bucket)));
+      // Process only the buckets that contain our selected bets
+      const uniqueBuckets = bucketsToProcess;
       
       toast({
         variant: 'default',
@@ -424,72 +444,47 @@ function AdminPage() {
         <Card className="bg-dark-slate/50 border-white/10">
           <CardContent className="p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              {/* Date Navigation */}
+              {/* Bucket Navigation */}
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-torch-purple" />
-                  <h2 className="text-lg font-semibold text-white">Bet Resolution</h2>
+                  <h2 className="text-lg font-semibold text-white">Bet Resolution by Bucket</h2>
                 </div>
 
-                <div className="flex items-center bg-neutral-800 rounded-lg p-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 hover:bg-neutral-700"
-                    onClick={() => {
-                      const newDate = new Date(selectedDate);
-                      newDate.setDate(newDate.getDate() - 1);
-                      setSelectedDate(newDate);
-                    }}
+                {/* Bucket Filter */}
+                <div className="flex items-center gap-2">
+                  <label htmlFor="bucket-filter" className="text-sm text-gray-400">
+                    Filter by bucket:
+                  </label>
+                  <select
+                    id="bucket-filter"
+                    value={selectedBucket}
+                    onChange={(e) => setSelectedBucket(e.target.value)}
+                    className="px-3 py-1.5 bg-neutral-800 border border-white/20 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-torch-purple"
                   >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-
-                  <input
-                    type="date"
-                    value={selectedDate.toISOString().split('T')[0]}
-                    onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                    className="px-3 py-1.5 bg-transparent text-white text-sm font-medium cursor-pointer 
-                             [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-50
-                             hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
-                  />
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 hover:bg-neutral-700"
-                    onClick={() => {
-                      const newDate = new Date(selectedDate);
-                      newDate.setDate(newDate.getDate() + 1);
-                      setSelectedDate(newDate);
-                    }}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
+                    <option value="all">All Buckets</option>
+                    {availableBuckets.map((bucket) => (
+                      <option key={bucket} value={bucket}>
+                        Bucket {bucket}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-white/20 hover:bg-white/5"
-                  onClick={() => setSelectedDate(new Date())}
-                >
-                  Today
-                </Button>
               </div>
 
               {/* Stats and Actions */}
               <div className="flex items-center gap-4">
-                {data?.bets && (
+                {filteredBets && (
                   <div className="flex items-center gap-3 text-sm">
                     <span className="text-gray-400">
-                      Total bets: <span className="text-white font-medium">{data.bets.length}</span>
+                      {selectedBucket === 'all' ? 'Total' : 'Filtered'} bets: 
+                      <span className="text-white font-medium ml-1">{filteredBets.length}</span>
                     </span>
                     <div className="w-px h-4 bg-gray-600" />
                     <span className="text-gray-400">
                       Unique times:{' '}
                       <span className="text-white font-medium">
-                        {Array.from(new Set(data.bets.map((b: Bet) => b.targetTimestamp))).length}
+                        {Array.from(new Set(filteredBets.map((b: Bet) => b.targetTimestamp))).length}
                       </span>
                     </span>
                   </div>
@@ -508,18 +503,18 @@ function AdminPage() {
               </div>
             </div>
 
-            {/* Selected Date Display */}
+            {/* Selected Bucket Display */}
             <div className="mt-4 pt-4 border-t border-white/10">
               <p className="text-sm text-gray-400">
-                Showing bets with target resolution date:
-                <span className="ml-2 text-white font-medium">
-                  {selectedDate.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </span>
+                {selectedBucket === 'all' 
+                  ? 'Showing all incomplete bets across all buckets'
+                  : `Showing bets from bucket ${selectedBucket}`
+                }
+                {filteredBets.length > 0 && (
+                  <span className="ml-2 text-white font-medium">
+                    ({filteredBets.length} bet{filteredBets.length !== 1 ? 's' : ''})
+                  </span>
+                )}
               </p>
             </div>
           </CardContent>
@@ -556,7 +551,7 @@ function AdminPage() {
                     </tr>
                   )}
 
-                  {!loading && (!data?.bets || data.bets.length === 0) && (
+                  {!loading && (!filteredBets || filteredBets.length === 0) && (
                     <tr>
                       <td colSpan={7} className="text-center py-12">
                         <div className="flex flex-col items-center space-y-3">
@@ -578,16 +573,16 @@ function AdminPage() {
                           <div className="space-y-1">
                             <p className="text-white font-medium">No bets found</p>
                             <p className="text-medium-gray text-sm">
-                              No bets to resolve for{' '}
-                              {selectedDate.toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                              })}
+                              {selectedBucket === 'all' 
+                                ? 'No incomplete bets found in any buckets'
+                                : `No bets found in bucket ${selectedBucket}`
+                              }
                             </p>
-                            <p className="text-medium-gray text-sm">
-                              Try selecting a different date
-                            </p>
+                            {selectedBucket !== 'all' && (
+                              <p className="text-medium-gray text-sm">
+                                Try selecting a different bucket or "All Buckets"
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -595,7 +590,7 @@ function AdminPage() {
                   )}
 
                   {!loading &&
-                    data?.bets?.map((bet: Bet) => {
+                    filteredBets?.map((bet: Bet) => {
                       const finalPrice = getFinalPrice(bet.targetTimestamp);
                       const fetchedPrice = findClosestPrice(bet.targetTimestamp);
                       const isManual = manualPrices.has(bet.targetTimestamp);
@@ -603,10 +598,8 @@ function AdminPage() {
                       const priceMax = parseFloat(formatTinybarsToHbar(bet.priceMax));
                       const isInRange =
                         finalPrice !== null && finalPrice >= priceMin && finalPrice <= priceMax;
-                      const key = `${bet.priceMin}-${bet.priceMax}-${bet.targetTimestamp}`;
-
                       return (
-                        <tr key={key} className="border-b border-white/5 hover:bg-dark-slate/50">
+                        <tr key={bet.id} className="border-b border-white/5 hover:bg-dark-slate/50">
                           <td className="py-3 px-4 text-sm text-light-gray font-mono">
                             {bet.id}
                           </td>
@@ -661,7 +654,7 @@ function AdminPage() {
                 </tbody>
               </table>
             </div>
-            {data?.bets && data.bets.length > 0 && (
+            {filteredBets && filteredBets.length > 0 && (
               <div className="flex justify-end mt-4">
                 <Button
                   variant="torch"
