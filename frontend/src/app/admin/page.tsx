@@ -9,16 +9,16 @@ import {
   useWatchTransactionReceipt,
 } from '@buidlerlabs/hashgraph-react-wallets';
 import { parseUnits } from 'ethers/lib/utils';
-import { Calendar, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { Calendar, RefreshCw } from 'lucide-react';
 
-import type { Bet, Bucket } from '@/lib/types';
+import type { Bet } from '@/lib/types';
 
 import { formatDateUTC, formatTinybarsToHbar } from '@/lib/utils';
-import { fetchHbarPriceAtTimestamp, type CoinGeckoResponse } from '@/lib/coingecko';
+import { fetchHbarPriceAtTimestamp } from '@/lib/coingecko';
 
 import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/useToast';
 import { Toaster } from '@/components/ui/toaster';
 import NoWalletConnectedContainer from '@/components/no-wallet-connected-container';
