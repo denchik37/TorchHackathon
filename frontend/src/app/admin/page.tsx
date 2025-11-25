@@ -535,6 +535,9 @@ function AdminPage() {
                     <th className="text-left py-3 px-4 font-medium text-medium-gray">Min price</th>
                     <th className="text-left py-3 px-4 font-medium text-medium-gray">Max price</th>
                     <th className="text-left py-3 px-4 font-medium text-medium-gray">
+                      Placed At (UTC)
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-medium-gray">
                       Resolution Time (UTC)
                     </th>
                     <th className="text-left py-3 px-4 font-medium text-medium-gray">Status</th>
@@ -546,7 +549,7 @@ function AdminPage() {
                 <tbody className="max-h-[600px] overflow-y-auto">
                   {loading && (
                     <tr>
-                      <td colSpan={7} className="text-center py-12">
+                      <td colSpan={8} className="text-center py-12">
                         <div className="flex flex-col items-center space-y-2">
                           <div className="w-8 h-8 border-2 border-torch-purple border-t-transparent rounded-full animate-spin" />
                           <p className="text-medium-gray">Loading bets...</p>
@@ -557,7 +560,7 @@ function AdminPage() {
 
                   {!loading && (!filteredBets || filteredBets.length === 0) && (
                     <tr>
-                      <td colSpan={7} className="text-center py-12">
+                      <td colSpan={8} className="text-center py-12">
                         <div className="flex flex-col items-center space-y-3">
                           <div className="w-16 h-16 bg-neutral-800 rounded-full flex items-center justify-center">
                             <svg
@@ -610,6 +613,9 @@ function AdminPage() {
                           <td className="py-3 px-4">${priceMin.toFixed(4)}</td>
                           <td className="py-3 px-4 text-sm text-light-gray">
                             ${priceMax.toFixed(4)}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-light-gray">
+                            {formatDateUTC(bet.timestamp)}
                           </td>
                           <td className="py-3 px-4 text-sm text-light-gray">
                             {formatDateUTC(bet.targetTimestamp)}
