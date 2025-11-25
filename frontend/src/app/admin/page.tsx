@@ -217,6 +217,12 @@ function AdminPage() {
 
       // Get unique bucket indices from bets data
       const uniqueBuckets = Array.from(new Set(data.bets.map((bet: Bet) => bet.bucket)));
+      
+      toast({
+        variant: 'default',
+        title: 'Submitting prices...',
+        description: `Preparing to submit ${timestampsWithPrices.length} prices`,
+      });
 
       // Submit prices first
       const setPricesResult = await writeContract({
@@ -229,14 +235,38 @@ function AdminPage() {
         },
       });
 
+      toast({
+        variant: 'default',
+        title: 'Waiting for price transaction...',
+        description: 'Please confirm in your wallet',
+      });
+
       // Watch the setPrices transaction
       watch(setPricesResult as string, {
         onSuccess: (transaction) => {
+          toast({
+            variant: 'success',
+            title: 'Prices submitted!',
+            description: `Successfully submitted ${timestampsWithPrices.length} prices. Starting batch processing...`,
+          });
+          
           // Process batches after price submission succeeds
           const processBatches = async () => {
             try {
+              toast({
+                variant: 'default',
+                title: 'Processing batches...',
+                description: `Found ${uniqueBuckets.length} bucket(s) to process`,
+              });
+              
               // Process each unique bucket after price submission succeeds
               for (const bucketIndex of uniqueBuckets) {
+                toast({
+                  variant: 'default',
+                  title: `Processing bucket ${bucketIndex}...`,
+                  description: 'Please confirm in your wallet',
+                });
+                
                 const processBatchResult = await writeContract({
                   contractId: process.env.NEXT_PUBLIC_CONTRACT_ID!,
                   abi: TorchPredictionMarketABI.abi,
@@ -250,6 +280,11 @@ function AdminPage() {
                 // Watch each processBatch transaction
                 watch(processBatchResult as string, {
                   onSuccess: (batchTransaction) => {
+                    toast({
+                      variant: 'success',
+                      title: `Bucket ${bucketIndex} processed!`,
+                      description: 'Successfully processed batch',
+                    });
                     return batchTransaction;
                   },
                   onError: (receipt, error) => {
@@ -265,14 +300,14 @@ function AdminPage() {
                 });
               }
 
-              setManualPrices(new Map());
-              setIsSubmitting(false);
-
               toast({
                 variant: 'success',
-                title: 'Prices submitted and batches processed!',
-                description: `Successfully submitted ${timestampsWithPrices.length} price${timestampsWithPrices.length === 1 ? '' : 's'} and processed ${uniqueBuckets.length} bucket${uniqueBuckets.length === 1 ? '' : 's'}.`,
+                title: 'All operations completed!',
+                description: `Successfully submitted ${timestampsWithPrices.length} price${timestampsWithPrices.length === 1 ? '' : 's'} and initiated processing for ${uniqueBuckets.length} bucket${uniqueBuckets.length === 1 ? '' : 's'}.`,
               });
+              
+              setManualPrices(new Map());
+              setIsSubmitting(false);
             } catch (batchError) {
               console.error('Error processing batches:', batchError);
               setIsSubmitting(false);
