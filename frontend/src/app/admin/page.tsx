@@ -11,7 +11,7 @@ import {
 import { parseUnits } from 'ethers/lib/utils';
 import { Calendar, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 
-import type { Bet } from '@/lib/types';
+import type { Bet, Bucket } from '@/lib/types';
 
 import { formatDateUTC, formatTinybarsToHbar } from '@/lib/utils';
 import { fetchHbarPriceAtTimestamp, type CoinGeckoResponse } from '@/lib/coingecko';
@@ -27,10 +27,7 @@ import TorchPredictionMarketABI from '../../../abi/TorchPredictionMarket.json';
 const GET_BETS = gql`
   query GetAllIncompleteBets {
     bets(
-      where: {
-        bucketRef_: { aggregationComplete: false }
-        finalized: false
-      }
+      where: { bucketRef_: { aggregationComplete: false }, finalized: false }
       orderBy: bucket
       orderDirection: asc
       first: 1000
@@ -81,14 +78,16 @@ function AdminPage() {
   });
 
   // Get available buckets for filtering
-  const availableBuckets = data?.bets ? 
-    Array.from(new Set(data.bets.map((bet: Bet) => bet.bucket.toString()))).sort((a, b) => Number(a) - Number(b))
+  const availableBuckets: string[] = data?.bets
+    ? Array.from(new Set<string>(data.bets.map((bet: Bet) => bet.bucket.toString()))).sort(
+        (a, b) => Number(a) - Number(b)
+      )
     : [];
 
   // Filter bets by selected bucket
-  const filteredBets = data?.bets ? 
-    selectedBucket === 'all' 
-      ? data.bets 
+  const filteredBets = data?.bets
+    ? selectedBucket === 'all'
+      ? data.bets
       : data.bets.filter((bet: Bet) => bet.bucket.toString() === selectedBucket)
     : [];
 
@@ -165,7 +164,7 @@ function AdminPage() {
     try {
       // Determine which bets to process based on selected bucket
       const betsToProcess = selectedBucket === 'all' ? data.bets : filteredBets;
-      
+
       if (!betsToProcess || betsToProcess.length === 0) {
         toast({
           variant: 'destructive',
@@ -175,15 +174,15 @@ function AdminPage() {
         setIsSubmitting(false);
         return;
       }
-      
+
       // Get unique buckets from the bets we're processing
       const bucketsToProcess = Array.from(new Set(betsToProcess.map((bet: Bet) => bet.bucket)));
-      
+
       // For each bucket, we need ALL bets in that bucket (not just visible ones)
-      const allBetsInBuckets = data.bets.filter((bet: Bet) => 
+      const allBetsInBuckets = data.bets.filter((bet: Bet) =>
         bucketsToProcess.includes(bet.bucket)
       );
-      
+
       // Get unique timestamps from ALL bets in the buckets being processed
       const uniqueTimestamps = Array.from(
         new Set(allBetsInBuckets.map((bet: Bet) => bet.targetTimestamp))
@@ -215,9 +214,12 @@ function AdminPage() {
         );
         console.log('Bets missing prices:', betsWithoutPrices);
 
-        const missingInfo = betsWithoutPrices.map((bet: Bet) => 
-          `Bet ${bet.id} (Bucket ${bet.bucket}, ${new Date(bet.targetTimestamp * 1000).toLocaleString()})`
-        ).join(', ');
+        const missingInfo = betsWithoutPrices
+          .map(
+            (bet: Bet) =>
+              `Bet ${bet.id} (Bucket ${bet.bucket}, ${new Date(bet.targetTimestamp * 1000).toLocaleString()})`
+          )
+          .join(', ');
 
         toast({
           variant: 'destructive',
@@ -237,7 +239,7 @@ function AdminPage() {
 
       // Process only the buckets that contain our selected bets
       const uniqueBuckets = bucketsToProcess;
-      
+
       toast({
         variant: 'default',
         title: 'Submitting prices...',
@@ -269,7 +271,7 @@ function AdminPage() {
             title: 'Prices submitted!',
             description: `Successfully submitted ${timestampsWithPrices.length} prices. Starting batch processing...`,
           });
-          
+
           // Process batches after price submission succeeds
           const processBatches = async () => {
             try {
@@ -278,7 +280,7 @@ function AdminPage() {
                 title: 'Processing batches...',
                 description: `Found ${uniqueBuckets.length} bucket(s) to process`,
               });
-              
+
               // Process each unique bucket after price submission succeeds
               for (const bucketIndex of uniqueBuckets) {
                 toast({
@@ -286,7 +288,7 @@ function AdminPage() {
                   title: `Processing bucket ${bucketIndex}...`,
                   description: 'Please confirm in your wallet',
                 });
-                
+
                 const processBatchResult = await writeContract({
                   contractId: process.env.NEXT_PUBLIC_CONTRACT_ID!,
                   abi: TorchPredictionMarketABI.abi,
@@ -325,7 +327,7 @@ function AdminPage() {
                 title: 'All operations completed!',
                 description: `Successfully submitted ${timestampsWithPrices.length} price${timestampsWithPrices.length === 1 ? '' : 's'} and initiated processing for ${uniqueBuckets.length} bucket${uniqueBuckets.length === 1 ? '' : 's'}.`,
               });
-              
+
               setManualPrices(new Map());
               setIsSubmitting(false);
             } catch (batchError) {
@@ -463,7 +465,7 @@ function AdminPage() {
                     className="px-3 py-1.5 bg-neutral-800 border border-white/20 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-torch-purple"
                   >
                     <option value="all">All Buckets</option>
-                    {availableBuckets.map((bucket) => (
+                    {availableBuckets.map((bucket: string) => (
                       <option key={bucket} value={bucket}>
                         Bucket {bucket}
                       </option>
@@ -477,14 +479,17 @@ function AdminPage() {
                 {filteredBets && (
                   <div className="flex items-center gap-3 text-sm">
                     <span className="text-gray-400">
-                      {selectedBucket === 'all' ? 'Total' : 'Filtered'} bets: 
+                      {selectedBucket === 'all' ? 'Total' : 'Filtered'} bets:
                       <span className="text-white font-medium ml-1">{filteredBets.length}</span>
                     </span>
                     <div className="w-px h-4 bg-gray-600" />
                     <span className="text-gray-400">
                       Unique times:{' '}
                       <span className="text-white font-medium">
-                        {Array.from(new Set(filteredBets.map((b: Bet) => b.targetTimestamp))).length}
+                        {
+                          Array.from(new Set(filteredBets.map((b: Bet) => b.targetTimestamp)))
+                            .length
+                        }
                       </span>
                     </span>
                   </div>
@@ -506,10 +511,9 @@ function AdminPage() {
             {/* Selected Bucket Display */}
             <div className="mt-4 pt-4 border-t border-white/10">
               <p className="text-sm text-gray-400">
-                {selectedBucket === 'all' 
+                {selectedBucket === 'all'
                   ? 'Showing all incomplete bets across all buckets'
-                  : `Showing bets from bucket ${selectedBucket}`
-                }
+                  : `Showing bets from bucket ${selectedBucket}`}
                 {filteredBets.length > 0 && (
                   <span className="ml-2 text-white font-medium">
                     ({filteredBets.length} bet{filteredBets.length !== 1 ? 's' : ''})
@@ -573,10 +577,9 @@ function AdminPage() {
                           <div className="space-y-1">
                             <p className="text-white font-medium">No bets found</p>
                             <p className="text-medium-gray text-sm">
-                              {selectedBucket === 'all' 
+                              {selectedBucket === 'all'
                                 ? 'No incomplete bets found in any buckets'
-                                : `No bets found in bucket ${selectedBucket}`
-                              }
+                                : `No bets found in bucket ${selectedBucket}`}
                             </p>
                             {selectedBucket !== 'all' && (
                               <p className="text-medium-gray text-sm">
@@ -600,9 +603,7 @@ function AdminPage() {
                         finalPrice !== null && finalPrice >= priceMin && finalPrice <= priceMax;
                       return (
                         <tr key={bet.id} className="border-b border-white/5 hover:bg-dark-slate/50">
-                          <td className="py-3 px-4 text-sm text-light-gray font-mono">
-                            {bet.id}
-                          </td>
+                          <td className="py-3 px-4 text-sm text-light-gray font-mono">{bet.id}</td>
                           <td className="py-3 px-4 text-sm text-light-gray">
                             {formatTinybarsToHbar(bet.stake)} HBAR
                           </td>
