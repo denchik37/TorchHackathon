@@ -11,6 +11,9 @@ import {
 
 import { User, UserStats, Bet, Fee, Bucket, PriceAtTimestamp } from "../generated/schema"
 
+/** -------- Constants -------- */
+const ZERO = BigInt.zero()
+
 /** -------- Helpers: User + Stats -------- */
 function getOrCreateUser(address: Address): UserStats {
   let id = address.toHexString()
@@ -26,8 +29,8 @@ function getOrCreateUser(address: Address): UserStats {
     stats = new UserStats(id)
     stats.totalBets = 0
     stats.totalWon = 0
-    stats.totalStaked = BigInt.zero()
-    stats.totalPayout = BigInt.zero()
+    stats.totalStaked = ZERO
+    stats.totalPayout = ZERO
     stats.save()
   }
 
@@ -54,13 +57,35 @@ function getOrCreateBucket(bucketId: string): Bucket {
   if (!bucket) {
     bucket = new Bucket(bucketId)
     bucket.totalBets = 0
+    bucket.totalStaked = ZERO
     bucket.aggregationComplete = false
-    bucket.totalWinningWeight = BigInt.zero()
+    bucket.totalWinningWeight = ZERO
     bucket.nextProcessIndex = 0
     bucket.betIds = []
     bucket.save()
   }
   return bucket as Bucket
+}
+
+/** -------- Helper: compute expected payout for all bets in a bucket -------- */
+function computeExpectedPayouts(bucket: Bucket): void {
+  if (!bucket.aggregationComplete) return
+  if (bucket.totalWinningWeight.le(ZERO)) return
+  if (bucket.totalStaked.le(ZERO)) return
+
+  let ids = bucket.betIds
+  for (let i = 0; i < ids.length; i++) {
+    let bet = Bet.load(ids[i])
+    if (!bet) continue
+
+    if (bet.won) {
+      bet.expectedPayout = bet.weight.times(bucket.totalStaked).div(bucket.totalWinningWeight)
+    } else {
+      bet.expectedPayout = ZERO
+    }
+
+    bet.save()
+  }
 }
 
 /** -------- Event: BetPlaced -------- */
@@ -77,10 +102,10 @@ export function handleBetPlaced(event: BetPlaced): void {
   // ---- Bucket ----
   let bucketId = event.params.bucket.toString()
   let bucket = getOrCreateBucket(bucketId)
-  
-  let ids = bucket.betIds
-  bucket.betIds = ids.concat([betId])
+
+  bucket.betIds = bucket.betIds.concat([betId])
   bucket.totalBets += 1
+  bucket.totalStaked = bucket.totalStaked.plus(betData.stake)
   bucket.save()
 
   // ---- Bet ----
@@ -101,7 +126,8 @@ export function handleBetPlaced(event: BetPlaced): void {
   bet.actualPrice = betData.actualPrice
   bet.won = betData.won
 
-  bet.payout = BigInt.zero()
+  bet.payout = ZERO                 
+  bet.expectedPayout = ZERO         
 
   bet.wonCounted = false
 
@@ -111,7 +137,7 @@ export function handleBetPlaced(event: BetPlaced): void {
 
   bet.save()
 
-  // ---- Stats ----
+  // ---- UserStats ----
   stats.totalBets += 1
   stats.totalStaked = stats.totalStaked.plus(bet.stake)
   stats.save()
@@ -158,11 +184,17 @@ export function handleBatchProcessed(event: BatchProcessed): void {
     bet.save()
   }
 
+  let wasComplete = bucket.aggregationComplete
+
   bucket.totalBets = totalBets
   bucket.totalWinningWeight = totalWinningWeight
   bucket.nextProcessIndex = newNext
   bucket.aggregationComplete = aggregationComplete
   bucket.save()
+
+  if (!wasComplete && bucket.aggregationComplete) {
+    computeExpectedPayouts(bucket as Bucket)
+  }
 }
 
 /** -------- Event: AggregationCompleted -------- */
@@ -176,9 +208,11 @@ export function handleAggregationCompleted(event: AggregationCompleted): void {
   bucket.aggregationComplete = true
   bucket.totalWinningWeight = event.params.totalWinningWeight
   bucket.save()
+
+  computeExpectedPayouts(bucket as Bucket)
 }
 
-/** -------- Event: BetClaimed ------- */
+/** -------- Event: BetClaimed -------- */
 export function handleBetClaimed(event: BetClaimed): void {
   let betId = event.params.betId.toString()
   let bet = Bet.load(betId)
@@ -188,13 +222,14 @@ export function handleBetClaimed(event: BetClaimed): void {
   bet.payout = event.params.payout
   bet.save()
 
+ 
   if (bet.won && !bet.wonCounted) {
     bet.wonCounted = true
     bet.save()
     incrementUserWon(bet.user)
   }
 
-  if (event.params.payout.gt(BigInt.zero())) {
+  if (event.params.payout.gt(ZERO)) {
     addUserPayout(event.params.bettor.toHexString(), event.params.payout)
   }
 }
@@ -212,7 +247,7 @@ export function handleFeeCollected(event: FeeCollected): void {
   fee.save()
 }
 
-/** -------- Event: BucketPriceSet ------- */
+/** -------- Event: BucketPriceSet -------- */
 export function handleBucketPriceSet(event: BucketPriceSet): void {
   let ts = event.params.bucket
   let id = ts.toString()
