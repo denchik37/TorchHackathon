@@ -19,11 +19,19 @@ type Bucket @entity(immutable: false) {
   aggregationComplete: Boolean!
   totalWinningWeight: BigInt!
   nextProcessIndex: Int!
-  price: BigInt
   bets: [Bet!]! @derivedFrom(field: "bucketRef")
   betIds: [String!]!
 }
 
+# ---------------- PRICE AT TIMESTAMP ----------------
+type PriceAtTimestamp @entity(immutable: false) {
+  id: ID!                    
+  timestamp: BigInt!
+  price: BigInt!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
 
 # ---------------- BET ----------------
 type Bet @entity(immutable: false) {
@@ -31,17 +39,22 @@ type Bet @entity(immutable: false) {
   user: User!
   bucket: Int!
   bucketRef: Bucket!
+
   stake: BigInt!
   priceMin: BigInt!
   priceMax: BigInt!
   targetTimestamp: BigInt!
-  qualityBps: BigInt
-  weight: BigInt
-  finalized: Boolean
-  claimed: Boolean
-  actualPrice: BigInt
-  won: Boolean
-  payout: BigInt
+  qualityBps: BigInt!
+  weight: BigInt!
+
+  finalized: Boolean!
+  claimed: Boolean!
+  actualPrice: BigInt!
+  won: Boolean!
+  payout: BigInt!
+
+  wonCounted: Boolean!   
+
   blockNumber: BigInt!
   timestamp: BigInt!
   transactionHash: Bytes!
