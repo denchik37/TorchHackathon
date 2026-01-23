@@ -1,6 +1,8 @@
 # ---------------- USER ----------------
-type User @entity(immutable: true) {
+type User @entity(immutable: false) {
   id: ID!
+  stats: UserStats!
+  totalBets: Int!
   bets: [Bet!]! @derivedFrom(field: "user")
 }
 
@@ -26,7 +28,7 @@ type Bucket @entity(immutable: false) {
 
 # ---------------- PRICE AT TIMESTAMP ----------------
 type PriceAtTimestamp @entity(immutable: false) {
-  id: ID!                    
+  id: ID!
   timestamp: BigInt!
   price: BigInt!
   blockNumber: BigInt!
@@ -53,8 +55,8 @@ type Bet @entity(immutable: false) {
   actualPrice: BigInt!
   won: Boolean!
 
-  payout: BigInt!                 
-  expectedPayout: BigInt!       
+  payout: BigInt!
+  expectedPayout: BigInt!
 
   wonCounted: Boolean!
 
