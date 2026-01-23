@@ -18,14 +18,7 @@ const ZERO = BigInt.zero()
 function getOrCreateUserAndStats(address: Address): UserStats {
   let id = address.toHexString()
 
-  // User
-  let user = User.load(id)
-  if (!user) {
-    user = new User(id)
-    user.totalBets = 0
-    user.save()
-  }
-
+  // Stats first
   let stats = UserStats.load(id)
   if (!stats) {
     stats = new UserStats(id)
@@ -35,14 +28,23 @@ function getOrCreateUserAndStats(address: Address): UserStats {
     stats.totalPayout = ZERO
     stats.save()
   }
-
-  if (user.stats == null) {
+  
+  let user = User.load(id)
+  if (!user) {
+    user = new User(id)
     user.stats = stats.id
+    user.totalBets = 0
     user.save()
+  } else {
+    if (user.stats == null) {
+      user.stats = stats.id
+      user.save()
+    }
   }
 
   return stats as UserStats
 }
+
 
 function incrementUserWon(userId: string): void {
   let stats = UserStats.load(userId)
@@ -68,6 +70,7 @@ function getOrCreateBucket(bucketId: string): Bucket {
     bucket.aggregationComplete = false
     bucket.totalWinningWeight = ZERO
     bucket.nextProcessIndex = 0
+    bucket.expectedPayoutsComputed = false 
     bucket.betIds = []
     bucket.save()
   }
@@ -204,8 +207,10 @@ export function handleBatchProcessed(event: BatchProcessed): void {
   bucket.aggregationComplete = aggregationComplete
   bucket.save()
 
-  if (!wasComplete && bucket.aggregationComplete) {
+  if (bucket.aggregationComplete && !bucket.expectedPayoutsComputed) {
     computeExpectedPayouts(bucket as Bucket)
+    bucket.expectedPayoutsComputed = true
+    bucket.save()
   }
 }
 
@@ -220,8 +225,6 @@ export function handleAggregationCompleted(event: AggregationCompleted): void {
   bucket.aggregationComplete = true
   bucket.totalWinningWeight = event.params.totalWinningWeight
   bucket.save()
-
-  computeExpectedPayouts(bucket as Bucket)
 }
 
 /** -------- Event: BetClaimed -------- */
