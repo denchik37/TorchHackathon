@@ -14,8 +14,9 @@ type UserStats @entity(immutable: false) {
 
 # ---------------- BUCKET ----------------
 type Bucket @entity(immutable: false) {
-  id: ID!                    
+  id: ID!
   totalBets: Int!
+  totalStaked: BigInt!
   aggregationComplete: Boolean!
   totalWinningWeight: BigInt!
   nextProcessIndex: Int!
@@ -51,9 +52,11 @@ type Bet @entity(immutable: false) {
   claimed: Boolean!
   actualPrice: BigInt!
   won: Boolean!
-  payout: BigInt!
 
-  wonCounted: Boolean!   
+  payout: BigInt!                 
+  expectedPayout: BigInt!       
+
+  wonCounted: Boolean!
 
   blockNumber: BigInt!
   timestamp: BigInt!
