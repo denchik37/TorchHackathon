@@ -15,12 +15,14 @@ import { User, UserStats, Bet, Fee, Bucket, PriceAtTimestamp } from "../generate
 const ZERO = BigInt.zero()
 
 /** -------- Helpers: User + Stats -------- */
-function getOrCreateUser(address: Address): UserStats {
+function getOrCreateUserAndStats(address: Address): UserStats {
   let id = address.toHexString()
 
+  // User
   let user = User.load(id)
   if (!user) {
     user = new User(id)
+    user.totalBets = 0
     user.save()
   }
 
@@ -34,7 +36,12 @@ function getOrCreateUser(address: Address): UserStats {
     stats.save()
   }
 
-  return stats
+  if (user.stats == null) {
+    user.stats = stats.id
+    user.save()
+  }
+
+  return stats as UserStats
 }
 
 function incrementUserWon(userId: string): void {
@@ -90,7 +97,7 @@ function computeExpectedPayouts(bucket: Bucket): void {
 
 /** -------- Event: BetPlaced -------- */
 export function handleBetPlaced(event: BetPlaced): void {
-  let stats = getOrCreateUser(event.params.bettor)
+  let stats = getOrCreateUserAndStats(event.params.bettor)
 
   let contract = TorchPredictionMarket.bind(event.address)
   let betResult = contract.try_getBet(event.params.betId)
@@ -126,8 +133,8 @@ export function handleBetPlaced(event: BetPlaced): void {
   bet.actualPrice = betData.actualPrice
   bet.won = betData.won
 
-  bet.payout = ZERO                 
-  bet.expectedPayout = ZERO         
+  bet.payout = ZERO
+  bet.expectedPayout = ZERO
 
   bet.wonCounted = false
 
@@ -137,7 +144,13 @@ export function handleBetPlaced(event: BetPlaced): void {
 
   bet.save()
 
-  // ---- UserStats ----
+  // ---- User + UserStats ----
+  let user = User.load(event.params.bettor.toHexString())
+  if (user) {
+    user.totalBets += 1
+    user.save()
+  }
+
   stats.totalBets += 1
   stats.totalStaked = stats.totalStaked.plus(bet.stake)
   stats.save()
@@ -150,7 +163,6 @@ export function handleBatchProcessed(event: BatchProcessed): void {
   if (!bucket) return
 
   let contract = TorchPredictionMarket.bind(event.address)
-
   let oldStart = bucket.nextProcessIndex
 
   let info = contract.try_getBucketInfo(event.params.bucket)
@@ -222,7 +234,6 @@ export function handleBetClaimed(event: BetClaimed): void {
   bet.payout = event.params.payout
   bet.save()
 
- 
   if (bet.won && !bet.wonCounted) {
     bet.wonCounted = true
     bet.save()
