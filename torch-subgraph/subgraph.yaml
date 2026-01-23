@@ -21,14 +21,13 @@ dataSources:
         - Bet
         - Fee
         - Bucket
+        - PriceAtTimestamp
       abis:
         - name: TorchPredictionMarket
           file: ./abis/TorchPredictionMarket.json
       eventHandlers:
         - event: BetPlaced(indexed uint256,indexed address,uint256,uint256,uint256,uint256,uint256)
           handler: handleBetPlaced
-        - event: BetFinalized(indexed uint256,uint256,bool,uint256)
-          handler: handleBetFinalized
         - event: BetClaimed(indexed uint256,indexed address,uint256)
           handler: handleBetClaimed
         - event: FeeCollected(uint256)
