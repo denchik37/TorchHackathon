@@ -9,6 +9,10 @@ export interface User {
 export interface Bucket {
   id: string;
   aggregationComplete: boolean;
+  nextProcessIndex?: number;
+  totalBets?: number;
+  totalWinningWeight?: string;
+  totalStaked?: string;
 }
 
 export interface Bet {
@@ -20,6 +24,7 @@ export interface Bet {
   timestamp: number;
   targetTimestamp: number;
   payout: number;
+  expectedPayout: number;
   claimed: boolean;
   finalized: boolean;
   won: boolean;

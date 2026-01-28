@@ -42,6 +42,10 @@ const GET_BETS = gql`
       bucketRef {
         id
         aggregationComplete
+        nextProcessIndex
+        totalBets
+        totalWinningWeight
+        totalStaked
       }
     }
   }

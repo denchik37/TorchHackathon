@@ -30,6 +30,7 @@ const GET_USER = gql`
         won
         claimed
         finalized
+        expectedPayout
         payout
         stake
         priceMin

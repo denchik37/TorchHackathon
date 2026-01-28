@@ -41,6 +41,23 @@ const getStatusText = (bet: Bet) => {
   }
 };
 
+const getDisplayPayout = (bet: Bet): number => {
+  // Show expectedPayout when bet won but not yet claimed
+  if (bet.won && bet.finalized && !bet.claimed && bet.bucketRef?.aggregationComplete) {
+    return bet.expectedPayout;
+  }
+
+  // Show actual payout when finalized (claimed or lost)
+  if (bet.finalized) {
+    return bet.payout;
+  }
+
+  // Show potential payout estimate for active bets
+  return Math.floor(
+    Number(bet.stake) + (Number(bet.stake) * (bet.qualityBps || 0)) / 10000
+  );
+};
+
 interface BetCardProps {
   bet: Bet;
   onRedeem: (betId: string) => void;
@@ -92,7 +109,7 @@ export function BetCard({ bet, onRedeem, redeemingBetId }: BetCardProps) {
               </div>
             </div>
 
-            {(bet.payout || !bet.finalized) && (
+            {(bet.payout || bet.expectedPayout || !bet.finalized) && (
               <div>
                 <span className="text-xs text-medium-gray">
                   {status === 'won' || status === 'unredeemed'
@@ -106,16 +123,7 @@ export function BetCard({ bet, onRedeem, redeemingBetId }: BetCardProps) {
                       : 'text-light-gray'
                   }`}
                 >
-                  {bet.finalized
-                    ? formatTinybarsToHbar(bet.payout, 2)
-                    : formatTinybarsToHbar(
-                        Math.floor(
-                          Number(bet.stake) +
-                            (Number(bet.stake) * (bet.qualityBps || 0)) / 10000
-                        ),
-                        2
-                      )}{' '}
-                  HBAR
+                  {formatTinybarsToHbar(getDisplayPayout(bet), 2)} HBAR
                 </div>
               </div>
             )}
