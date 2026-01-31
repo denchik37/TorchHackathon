@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   useWallet,
   useEvmAddress,
@@ -7,10 +7,9 @@ import {
   useWatchTransactionReceipt,
 } from '@buidlerlabs/hashgraph-react-wallets';
 import { HashpackConnector } from '@buidlerlabs/hashgraph-react-wallets/connectors';
-import { ContractId } from '@hashgraph/sdk';
 import { gql, useQuery } from '@apollo/client';
 
-import { User, Bet } from '@/lib/types';
+import { Bet } from '@/lib/types';
 import TorchPredictionMarketABI from '../../../abi/TorchPredictionMarket.json';
 
 import { Header } from '@/components/header';
@@ -20,36 +19,42 @@ import NoBetsContainer from '@/components/no-bets-container';
 import NoWalletConnectedContainer from '@/components/no-wallet-connected-container';
 import { BetCard } from '@/components/bet-card';
 import { NoBetsCard } from '@/components/no-bets-card';
+import { Loader2 } from 'lucide-react';
 
-const GET_USER = gql`
-  query GetUser($id: ID!) {
-    user(id: $id) {
+const BETS_PER_PAGE = 20;
+
+const GET_USER_BETS = gql`
+  query GetUserBets($userId: String!, $first: Int!, $skip: Int!) {
+    bets(
+      where: { user: $userId }
+      first: $first
+      skip: $skip
+      orderBy: timestamp
+      orderDirection: desc
+    ) {
       id
-      bets {
+      won
+      claimed
+      finalized
+      expectedPayout
+      payout
+      stake
+      priceMin
+      priceMax
+      qualityBps
+      timestamp
+      targetTimestamp
+      bucket
+      bucketRef {
         id
-        won
-        claimed
-        finalized
-        expectedPayout
-        payout
-        stake
-        priceMin
-        priceMax
-        qualityBps
-        timestamp
-        targetTimestamp
-        bucket
-        bucketRef {
-          id
-          aggregationComplete
-        }
+        aggregationComplete
       }
     }
   }
 `;
 
-type Data = {
-  user: User;
+type BetsData = {
+  bets: Bet[];
 };
 
 const getBetStatus = (bet: Bet): 'active' | 'won' | 'lost' | 'unredeemed' => {
@@ -64,16 +69,64 @@ export default function MyBetsPage() {
   const { isConnected } = useWallet(HashpackConnector);
   const [activeCategory, setActiveCategory] = useState('all');
   const [redeemingBetId, setRedeemingBetId] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { writeContract } = useWriteContract();
   const { watch } = useWatchTransactionReceipt();
 
-  const { data, loading, refetch } = useQuery<Data>(GET_USER, {
-    variables: { id: evmAddress },
+  const { data, loading, fetchMore, refetch } = useQuery<BetsData>(GET_USER_BETS, {
+    variables: { userId: evmAddress?.toLowerCase(), first: BETS_PER_PAGE, skip: 0 },
+    skip: !evmAddress,
+    notifyOnNetworkStatusChange: true,
   });
 
-  const user = data?.user;
-  const bets = user?.bets ?? [];
+  const bets = data?.bets ?? [];
+
+  const loadMore = useCallback(() => {
+    if (loading || !hasMore) return;
+
+    fetchMore({
+      variables: {
+        skip: bets.length,
+      },
+      updateQuery: (prev, { fetchMoreResult }) => {
+        if (!fetchMoreResult || fetchMoreResult.bets.length === 0) {
+          setHasMore(false);
+          return prev;
+        }
+        if (fetchMoreResult.bets.length < BETS_PER_PAGE) {
+          setHasMore(false);
+        }
+        return {
+          bets: [...prev.bets, ...fetchMoreResult.bets],
+        };
+      },
+    });
+  }, [loading, hasMore, fetchMore, bets.length]);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentRef = loadMoreRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
+  }, [loadMore, hasMore, loading]);
 
   const wonBets = bets.filter((bet) => {
     return bet.won;
@@ -138,6 +191,7 @@ export default function MyBetsPage() {
       watch(txId as string, {
         onSuccess: (transaction) => {
           setRedeemingBetId(null);
+          setHasMore(true);
           refetch();
           return transaction;
         },
@@ -159,6 +213,13 @@ export default function MyBetsPage() {
           <NoWalletConnectedContainer />
         ) : (
           <>
+            {/* Initial loading state */}
+            {loading && bets.length === 0 && (
+              <div className="flex justify-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-vibrant-purple" />
+              </div>
+            )}
+
             {!bets.length && !loading && <NoBetsContainer />}
 
             {bets.length > 0 && (
@@ -222,14 +283,25 @@ export default function MyBetsPage() {
                   {filteredBets.length === 0 ? (
                     <NoBetsCard activeCategory={activeCategory} />
                   ) : (
-                    filteredBets.map((bet) => (
-                      <BetCard
-                        key={bet.id}
-                        bet={bet}
-                        onRedeem={redeemBet}
-                        redeemingBetId={redeemingBetId}
-                      />
-                    ))
+                    <>
+                      {filteredBets.map((bet) => (
+                        <BetCard
+                          key={bet.id}
+                          bet={bet}
+                          onRedeem={redeemBet}
+                          redeemingBetId={redeemingBetId}
+                        />
+                      ))}
+                      {/* Infinite scroll sentinel */}
+                      <div ref={loadMoreRef} className="py-4 flex justify-center">
+                        {loading && (
+                          <Loader2 className="h-6 w-6 animate-spin text-vibrant-purple" />
+                        )}
+                        {!hasMore && bets.length > BETS_PER_PAGE && (
+                          <p className="text-medium-gray text-sm">No more bets to load</p>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
