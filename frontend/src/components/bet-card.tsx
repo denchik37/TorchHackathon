@@ -91,9 +91,9 @@ export function BetCard({ bet, onRedeem, redeemingBetId }: BetCardProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left side - Bet details */}
-          <div className="space-y-4">
+        <div className="space-y-4">
+          {/* Row 1: Price Range - Days remaining / Status */}
+          <div className="flex justify-between items-start">
             <div>
               <span className="text-xs text-medium-gray">Price Range</span>
               <div className="text-light-gray font-mono">
@@ -102,35 +102,6 @@ export function BetCard({ bet, onRedeem, redeemingBetId }: BetCardProps) {
               </div>
             </div>
 
-            <div>
-              <span className="text-xs text-medium-gray">Amount Bet</span>
-              <div className="text-light-gray font-mono">
-                {formatTinybarsToHbar(bet.stake, 2)} HBAR
-              </div>
-            </div>
-
-            {(bet.payout || bet.expectedPayout || !bet.finalized) && (
-              <div>
-                <span className="text-xs text-medium-gray">
-                  {status === 'won' || status === 'unredeemed'
-                    ? 'Payout'
-                    : 'Potential Payout'}
-                </span>
-                <div
-                  className={`font-mono font-semibold ${
-                    status === 'won' || status === 'unredeemed'
-                      ? 'text-bright-green'
-                      : 'text-light-gray'
-                  }`}
-                >
-                  {formatTinybarsToHbar(getDisplayPayout(bet), 2)} HBAR
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Right side - Status and actions */}
-          <div className="flex flex-col justify-between items-end">
             {status === 'active' && (
               <div className="text-right">
                 <div className="text-2xl font-bold text-light-gray">
@@ -164,6 +135,35 @@ export function BetCard({ bet, onRedeem, redeemingBetId }: BetCardProps) {
                   'Redeem'
                 )}
               </Button>
+            )}
+          </div>
+
+          {/* Row 2: Amount - Payout */}
+          <div className="flex justify-between items-end">
+            <div>
+              <span className="text-xs text-medium-gray">Amount Bet</span>
+              <div className="text-light-gray font-mono">
+                {formatTinybarsToHbar(bet.stake, 2)} HBAR
+              </div>
+            </div>
+
+            {(bet.payout || bet.expectedPayout || !bet.finalized) && (
+              <div className="text-right">
+                <span className="text-xs text-medium-gray">
+                  {status === 'won' || status === 'unredeemed'
+                    ? 'Payout'
+                    : 'Potential Payout'}
+                </span>
+                <div
+                  className={`font-mono font-semibold ${
+                    status === 'won' || status === 'unredeemed'
+                      ? 'text-bright-green'
+                      : 'text-light-gray'
+                  }`}
+                >
+                  {formatTinybarsToHbar(getDisplayPayout(bet), 2)} HBAR
+                </div>
+              </div>
             )}
           </div>
         </div>
