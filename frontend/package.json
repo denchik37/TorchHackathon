@@ -12,6 +12,7 @@
     "@apollo/client": "^3.13.9",
     "@buidlerlabs/hashgraph-react-wallets": "^2.5.0",
     "@clerk/nextjs": "^6.28.1",
+    "@hashgraph/proto": "^2.25.0",
     "@hashgraph/sdk": "^2.80.0",
     "@radix-ui/react-avatar": "^1.0.4",
     "@radix-ui/react-dialog": "^1.0.5",
