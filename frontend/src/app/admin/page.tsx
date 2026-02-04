@@ -251,15 +251,22 @@ function AdminPage() {
       });
 
       // Submit prices first
+      console.log('=== DEBUG: Submitting prices ===');
+      console.log('Timestamps:', timestamps);
+      console.log('Prices:', prices);
+      console.log('Buckets to process:', uniqueBuckets);
+
       const setPricesResult = await writeContract({
         contractId: process.env.NEXT_PUBLIC_CONTRACT_ID!,
         abi: TorchPredictionMarketABI.abi,
         functionName: 'setPricesForTimestamps',
         args: [timestamps, prices],
         metaArgs: {
-          gas: 3000000, // 0.3 HBAR gas limit for setting prices
+          gas: 5000000, // Increased gas limit
         },
       });
+
+      console.log('setPricesResult:', setPricesResult);
 
       toast({
         variant: 'default',
@@ -268,8 +275,11 @@ function AdminPage() {
       });
 
       // Watch the setPrices transaction
+      console.log('=== DEBUG: Watching setPrices transaction ===');
       watch(setPricesResult as string, {
         onSuccess: (transaction) => {
+          console.log('=== DEBUG: setPrices SUCCESS ===');
+          console.log('Transaction:', transaction);
           toast({
             variant: 'success',
             title: 'Prices submitted!',
@@ -287,6 +297,7 @@ function AdminPage() {
 
               // Process each unique bucket after price submission succeeds
               for (const bucketIndex of uniqueBuckets) {
+                console.log(`=== DEBUG: Processing bucket ${bucketIndex} ===`);
                 toast({
                   variant: 'default',
                   title: `Processing bucket ${bucketIndex}...`,
@@ -299,13 +310,17 @@ function AdminPage() {
                   functionName: 'processBatch',
                   args: [bucketIndex],
                   metaArgs: {
-                    gas: 3000000, // 0.3 HBAR gas limit for batch processing
+                    gas: 10000000, // Increased gas limit for batch processing
                   },
                 });
+
+                console.log(`processBatch result for bucket ${bucketIndex}:`, processBatchResult);
 
                 // Watch each processBatch transaction
                 watch(processBatchResult as string, {
                   onSuccess: (batchTransaction) => {
+                    console.log(`=== DEBUG: processBatch SUCCESS for bucket ${bucketIndex} ===`);
+                    console.log('Batch transaction:', batchTransaction);
                     toast({
                       variant: 'success',
                       title: `Bucket ${bucketIndex} processed!`,
@@ -314,7 +329,9 @@ function AdminPage() {
                     return batchTransaction;
                   },
                   onError: (receipt, error) => {
-                    console.error(`Error processing batch ${bucketIndex}:`, error);
+                    console.error(`=== DEBUG: processBatch ERROR for bucket ${bucketIndex} ===`);
+                    console.error('Receipt:', receipt);
+                    console.error('Error:', error);
                     toast({
                       variant: 'destructive',
                       title: `Failed to process batch ${bucketIndex}`,
@@ -348,12 +365,15 @@ function AdminPage() {
             }
           };
 
+          console.log('=== DEBUG: Calling processBatches() ===');
           processBatches();
           return transaction;
         },
         onError: (receipt, error) => {
+          console.error('=== DEBUG: setPrices ERROR ===');
+          console.error('Receipt:', receipt);
+          console.error('Error:', error);
           setIsSubmitting(false);
-          console.error('Error submitting prices:', error);
           toast({
             variant: 'destructive',
             title: 'Failed to submit prices',
