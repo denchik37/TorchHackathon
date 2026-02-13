@@ -343,8 +343,8 @@ export function PredictionCard({ className }: PredictionCardProps) {
     if (data?.bets?.length) {
       const prices = data.bets.flatMap((bet: Bet) => [bet.priceMin, bet.priceMax]);
 
-      const minPrice = Math.min(...prices) / 10000;
-      const maxPrice = Math.max(...prices) / 10000;
+      const minPrice = Math.min(...prices) / 100000000;
+      const maxPrice = Math.max(...prices) / 100000000;
 
       setSelectedRange({ min: minPrice, max: maxPrice });
     }
