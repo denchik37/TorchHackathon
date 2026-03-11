@@ -1,33 +1,18 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
-import { ThemeProvider } from '@/components/theme-provider';
-import ContextProvider from '../../context';
-import ApolloProviderClient from '@/components/apollo-client-provider';
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { ClientProviders } from "@/components/client-providers";
+import { siteMetadata } from "./metadata";
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ["latin"] });
 
-export const metadata: Metadata = {
-  title: 'Torch - Crypto Prediction Market',
-  description: 'Predict cryptocurrency token prices and earn rewards',
-};
+export const metadata: Metadata = siteMetadata;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ApolloProviderClient>
-          <ContextProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="dark"
-              enableSystem
-              disableTransitionOnChange
-            >
-              {children}
-            </ThemeProvider>
-          </ContextProvider>
-        </ApolloProviderClient>
+        <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
   );

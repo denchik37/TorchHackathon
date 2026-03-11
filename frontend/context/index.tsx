@@ -10,7 +10,7 @@ import {
   HWCConnector,
 } from '@buidlerlabs/hashgraph-react-wallets/connectors';
 import { hederaMainnet } from '../config';
-import { AppSkeleton } from '@/components/app-skeleton';
+import { AppSkeleton } from '@/components/layout';
 
 const connectors = [
   HashpackConnector,

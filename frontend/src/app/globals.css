@@ -118,4 +118,34 @@
   .dark .border-vibrant-purple {
     border-color: #5e2de3;
   }
+
+  /* Glassy surfaces – same purple as step numbers, consistent across UI */
+  .dark .glass {
+    background: hsl(262 76% 53% / 0.06);
+    border: 1px solid hsl(262 76% 53% / 0.2);
+    backdrop-filter: blur(12px);
+  }
+  .dark .glass-card {
+    background: hsl(240 2% 11% / 0.7);
+    border: 1px solid hsl(0 0% 100% / 0.08);
+    backdrop-filter: blur(12px);
+  }
+  .dark .glass-bar {
+    background: hsl(262 76% 53% / 0.5);
+    backdrop-filter: blur(6px);
+  }
+  .dark .glass-range {
+    background: hsl(262 76% 53% / 0.15);
+    backdrop-filter: blur(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

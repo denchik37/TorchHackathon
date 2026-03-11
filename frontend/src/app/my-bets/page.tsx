@@ -12,13 +12,10 @@ import { gql, useQuery } from '@apollo/client';
 import { Bet } from '@/lib/types';
 import TorchPredictionMarketABI from '../../../abi/TorchPredictionMarket.json';
 
-import { Header } from '@/components/header';
+import { Header } from '@/components/layout';
 import { Card, CardContent } from '@/components/ui/card';
-
-import NoBetsContainer from '@/components/no-bets-container';
-import NoWalletConnectedContainer from '@/components/no-wallet-connected-container';
-import { BetCard } from '@/components/bet-card';
-import { NoBetsCard } from '@/components/no-bets-card';
+import { NoBetsContainer, BetCard, NoBetsCard } from '@/components/features/bets';
+import { NoWalletConnectedContainer } from '@/components/features/wallet';
 import { Loader2 } from 'lucide-react';
 
 const GET_USER_BETS = gql`
@@ -154,79 +151,75 @@ export default function MyBetsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-background">
       <Header />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-4xl">
         {!isConnected ? (
           <NoWalletConnectedContainer />
         ) : (
           <>
-            {/* Loading state */}
             {loading && (
               <div className="flex justify-center py-20">
-                <Loader2 className="h-8 w-8 animate-spin text-vibrant-purple" />
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             )}
 
             {!bets.length && !loading && <NoBetsContainer />}
 
             {bets.length > 0 && (
-              <div className="max-w-lg mx-auto space-y-6">
-                {/* Bet Categories */}
-                <div className="flex space-x-2">
+              <div className="space-y-6">
+                {/* Filter pills – glassy container, active tab purple + white text */}
+                <div className="flex gap-1 p-1 rounded-xl bg-card/60 backdrop-blur-md border border-white/10 overflow-x-auto">
                   {categories.map((category) => {
                     const isActive = activeCategory === category.id;
-                    const buttonClasses = isActive
-                      ? 'bg-vibrant-purple text-white'
-                      : 'bg-neutral-900 text-light-gray hover:bg-neutral-800 border border-neutral-800';
-
                     return (
                       <button
                         type="button"
                         key={category.id}
                         onClick={() => setActiveCategory(category.id)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${buttonClasses}`}
+                        className={`flex-shrink-0 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                          isActive
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
                       >
                         {category.label}
-                        <span className="ml-2 text-xs opacity-70">{category.count}</span>
+                        <span className={`ml-2 text-xs ${isActive ? 'opacity-90' : 'opacity-80'}`}>{category.count}</span>
                       </button>
                     );
                   })}
                 </div>
 
-                {/* Bet Summary */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <Card className="bg-neutral-950 border-neutral-800">
-                    <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-light-gray">
-                        {bets.length}
-                      </div>
-                      <div className="text-xs text-medium-gray">Total Bets</div>
+                {/* Summary cards – glassy */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Card className="rounded-xl border border-white/10 bg-card/80 backdrop-blur-sm">
+                    <CardContent className="p-5">
+                      <p className="text-2xl font-bold text-foreground tabular-nums">{bets.length}</p>
+                      <p className="text-xs font-medium text-muted-foreground mt-1">Total bets</p>
                     </CardContent>
                   </Card>
-                  <Card className="bg-neutral-950 border-bright-green/20">
-                    <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-bright-green">{wonBets.length}</div>
-                      <div className="text-xs text-medium-gray">Won</div>
+                  <Card className="rounded-xl border border-white/10 bg-card/80 backdrop-blur-sm">
+                    <CardContent className="p-5">
+                      <p className="text-2xl font-bold text-destructive tabular-nums">{wonBets.length}</p>
+                      <p className="text-xs font-medium text-muted-foreground mt-1">Won</p>
                     </CardContent>
                   </Card>
-                  <Card className="bg-neutral-950 border-red-500/20">
-                    <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-red-500">{lostBets.length}</div>
-                      <div className="text-xs text-medium-gray">Lost</div>
+                  <Card className="rounded-xl border border-white/10 bg-card/80 backdrop-blur-sm">
+                    <CardContent className="p-5">
+                      <p className="text-2xl font-bold text-muted-foreground tabular-nums">{lostBets.length}</p>
+                      <p className="text-xs font-medium text-muted-foreground mt-1">Lost</p>
                     </CardContent>
                   </Card>
-                  <Card className="bg-neutral-950 border-vibrant-purple/20">
-                    <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-vibrant-purple">
+                  <Card className="rounded-xl border border-white/10 bg-card/80 backdrop-blur-sm">
+                    <CardContent className="p-5">
+                      <p className="text-2xl font-bold text-primary tabular-nums">
                         {bets.filter((bet) => !bet.finalized).length}
-                      </div>
-                      <div className="text-xs text-medium-gray">Active</div>
+                      </p>
+                      <p className="text-xs font-medium text-muted-foreground mt-1">Active</p>
                     </CardContent>
                   </Card>
                 </div>
 
-                {/* Bet Cards */}
                 <div className="space-y-4">
                   {filteredBets.length === 0 ? (
                     <NoBetsCard activeCategory={activeCategory} />
