@@ -36,26 +36,26 @@ export function AppSkeleton() {
             </div>
 
             <div className="space-y-6">
-              <div className={`${appSkeletonStyles.chartArea}`}>
-                <Skeleton className="h-full w-full bg-neutral-800" />
+              <div className={appSkeletonStyles.chartArea}>
+                <Skeleton className="h-full w-full" />
               </div>
               <div className="space-y-4">
                 <div className="flex items-center space-x-4">
-                  <Skeleton className="h-10 w-10 rounded bg-neutral-800" />
-                  <Skeleton className="h-10 flex-1 bg-neutral-800" />
-                  <Skeleton className="h-10 w-10 rounded bg-neutral-800" />
+                  <Skeleton className="h-10 w-10 rounded" />
+                  <Skeleton className="h-10 flex-1" />
+                  <Skeleton className="h-10 w-10 rounded" />
                 </div>
-                <Skeleton className="h-12 w-full bg-neutral-800" />
+                <Skeleton className="h-12 w-full" />
               </div>
               <div className="grid grid-cols-3 gap-4">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className={appSkeletonStyles.statBox}>
-                    <Skeleton className="h-4 w-full mb-2 bg-neutral-800" />
-                    <Skeleton className="h-6 w-3/4 bg-neutral-800" />
+                    <Skeleton className="h-4 w-full mb-2" />
+                    <Skeleton className="h-6 w-3/4" />
                   </div>
                 ))}
               </div>
-              <Skeleton className="h-12 w-full bg-torch-purple/20" />
+              <Skeleton className="h-12 w-full bg-primary/20" />
             </div>
           </div>
         </div>
