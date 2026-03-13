@@ -1,21 +1,8 @@
-type BettingRunArtifact = {
-  runId?: string;
-  timestampUtc?: string;
-  forecasts?: unknown[];
-  betParams?: unknown[];
-  results?: Array<{
-    txId?: string;
-    status?: number;
-    dryRun?: boolean;
-    skippedDuplicate?: boolean;
-    error?: string;
-  }>;
-};
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
 
-export function computeBettingRunSummary(
-  date: string,
-  fileJson: BettingRunArtifact | null
-): {
+export type BettingRunSummary = {
   date: string;
   runId: string;
   timestampUtc: string;
@@ -26,19 +13,35 @@ export function computeBettingRunSummary(
   dryRunCount: number;
   skippedCount: number;
   failedCount: number;
-} | null {
-  if (!fileJson) return null;
-  const results = fileJson.results ?? [];
-  const successCount = results.filter((r) => r.txId && r.status === 22).length;
-  const dryRunCount = results.filter((r) => r.dryRun).length;
-  const skippedCount = results.filter((r) => r.skippedDuplicate).length;
-  const failedCount = results.filter((r) => r.error).length;
+};
+
+export function computeBettingRunSummary(
+  date: string,
+  fileJson: unknown
+): BettingRunSummary | null {
+  if (!isObject(fileJson)) return null;
+
+  const rawResults = Array.isArray(fileJson.results) ? fileJson.results : [];
+  const results = rawResults.filter(isObject);
+
+  const successCount = results.filter(
+    (r) => typeof r.txId === 'string' && typeof r.status === 'number' && r.status === 22
+  ).length;
+  const dryRunCount = results.filter((r) => r.dryRun === true).length;
+  const skippedCount = results.filter((r) => r.skippedDuplicate === true).length;
+  const failedCount = results.filter(
+    (r) => typeof r.error === 'string' && (r.error as string).length > 0
+  ).length;
+
+  const forecasts = Array.isArray(fileJson.forecasts) ? fileJson.forecasts : [];
+  const betParams = Array.isArray(fileJson.betParams) ? fileJson.betParams : [];
+
   return {
     date,
-    runId: fileJson.runId ?? '',
-    timestampUtc: fileJson.timestampUtc ?? '',
-    forecastCount: fileJson.forecasts?.length ?? 0,
-    betParamCount: fileJson.betParams?.length ?? 0,
+    runId: typeof fileJson.runId === 'string' ? fileJson.runId : '',
+    timestampUtc: typeof fileJson.timestampUtc === 'string' ? fileJson.timestampUtc : '',
+    forecastCount: forecasts.length,
+    betParamCount: betParams.length,
     resultCount: results.length,
     successCount,
     dryRunCount,
@@ -47,34 +50,33 @@ export function computeBettingRunSummary(
   };
 }
 
-type ResolverRunArtifact = {
-  runId?: string;
-  timestampUtc?: string;
-  mode?: string;
-  priceChecks?: Array<{ status?: string }>;
-};
-
-export function computeResolverRunSummary(
-  id: string,
-  filename: string,
-  fileJson: ResolverRunArtifact | null
-): {
+export type ResolverRunSummary = {
   id: string;
   filename: string;
   timestampUtc: string;
   mode: string;
   acceptedCount?: number;
   blockedCount?: number;
-} | null {
-  if (!fileJson) return null;
-  const checks = fileJson.priceChecks ?? [];
+};
+
+export function computeResolverRunSummary(
+  id: string,
+  filename: string,
+  fileJson: unknown
+): ResolverRunSummary | null {
+  if (!isObject(fileJson)) return null;
+
+  const rawChecks = Array.isArray(fileJson.priceChecks) ? fileJson.priceChecks : [];
+  const checks = rawChecks.filter(isObject);
+
   const acceptedCount = checks.filter((c) => c.status === 'accepted').length;
   const blockedCount = checks.filter((c) => c.status === 'blocked').length;
+
   return {
     id,
     filename,
-    timestampUtc: fileJson.timestampUtc ?? '',
-    mode: fileJson.mode ?? 'live',
+    timestampUtc: typeof fileJson.timestampUtc === 'string' ? fileJson.timestampUtc : '',
+    mode: typeof fileJson.mode === 'string' ? fileJson.mode : 'live',
     acceptedCount,
     blockedCount,
   };
