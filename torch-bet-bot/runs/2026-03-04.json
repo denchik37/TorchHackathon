@@ -1,0 +1,276 @@
+{
+  "runId": "170219a9-8f21-443f-941f-65044d4c778e",
+  "timestampUtc": "2026-03-04T14:26:37.561Z",
+  "provider": "openai",
+  "forecasts": [
+    {
+      "targetTimestamp": 1772798400,
+      "dayLabel": "on March 6",
+      "priceLow": 0.127,
+      "priceHigh": 0.143,
+      "priceLowStr": "0.12700",
+      "priceHighStr": "0.14300",
+      "raw": "Min: [0.12700], Max: [0.14300]",
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 6, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text."
+    },
+    {
+      "targetTimestamp": 1772884800,
+      "dayLabel": "on March 7",
+      "priceLow": 0.112,
+      "priceHigh": 0.1285,
+      "priceLowStr": "0.11200",
+      "priceHighStr": "0.12850",
+      "raw": "Min: [0.11200], Max: [0.12850]",
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 7, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text."
+    },
+    {
+      "targetTimestamp": 1772971200,
+      "dayLabel": "on March 8",
+      "priceLow": 0.085,
+      "priceHigh": 0.125,
+      "priceLowStr": "0.08500",
+      "priceHighStr": "0.12500",
+      "raw": "Min: [0.08500], Max: [0.12500]",
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 8, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text."
+    },
+    {
+      "targetTimestamp": 1773057600,
+      "dayLabel": "on March 9",
+      "priceLow": 0.087,
+      "priceHigh": 0.103,
+      "priceLowStr": "0.08700",
+      "priceHighStr": "0.10300",
+      "raw": "Min: [0.08700], Max: [0.10300]",
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 9, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text."
+    },
+    {
+      "targetTimestamp": 1773144000,
+      "dayLabel": "on March 10",
+      "priceLow": 0.095,
+      "priceHigh": 0.125,
+      "priceLowStr": "0.09500",
+      "priceHighStr": "0.12500",
+      "raw": "Min: [0.09500], Max: [0.12500]",
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 10, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text."
+    },
+    {
+      "targetTimestamp": 1773230400,
+      "dayLabel": "on March 11",
+      "priceLow": 0.105,
+      "priceHigh": 0.145,
+      "priceLowStr": "0.10500",
+      "priceHighStr": "0.14500",
+      "raw": "Min: [0.10500], Max: [0.14500]",
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 11, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text."
+    },
+    {
+      "targetTimestamp": 1773316800,
+      "dayLabel": "on March 12",
+      "priceLow": 0.095,
+      "priceHigh": 0.145,
+      "priceLowStr": "0.09500",
+      "priceHighStr": "0.14500",
+      "raw": "Min: [0.09500], Max: [0.14500]",
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 12, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text."
+    }
+  ],
+  "betParams": [
+    {
+      "targetTimestamp": 1772798400,
+      "priceLowInt": "12700000",
+      "priceHighInt": "14300000",
+      "priceMinStr": "0.12700",
+      "priceMaxStr": "0.14300",
+      "stakeValue": "100000000000000000"
+    },
+    {
+      "targetTimestamp": 1772884800,
+      "priceLowInt": "11200000",
+      "priceHighInt": "12850000",
+      "priceMinStr": "0.11200",
+      "priceMaxStr": "0.12850",
+      "stakeValue": "100000000000000000"
+    },
+    {
+      "targetTimestamp": 1772971200,
+      "priceLowInt": "8500000",
+      "priceHighInt": "12500000",
+      "priceMinStr": "0.08500",
+      "priceMaxStr": "0.12500",
+      "stakeValue": "100000000000000000"
+    },
+    {
+      "targetTimestamp": 1773057600,
+      "priceLowInt": "8700000",
+      "priceHighInt": "10300000",
+      "priceMinStr": "0.08700",
+      "priceMaxStr": "0.10300",
+      "stakeValue": "100000000000000000"
+    },
+    {
+      "targetTimestamp": 1773144000,
+      "priceLowInt": "9500000",
+      "priceHighInt": "12500000",
+      "priceMinStr": "0.09500",
+      "priceMaxStr": "0.12500",
+      "stakeValue": "100000000000000000"
+    },
+    {
+      "targetTimestamp": 1773230400,
+      "priceLowInt": "10500000",
+      "priceHighInt": "14500000",
+      "priceMinStr": "0.10500",
+      "priceMaxStr": "0.14500",
+      "stakeValue": "100000000000000000"
+    },
+    {
+      "targetTimestamp": 1773316800,
+      "priceLowInt": "9500000",
+      "priceHighInt": "14500000",
+      "priceMinStr": "0.09500",
+      "priceMaxStr": "0.14500",
+      "stakeValue": "100000000000000000"
+    }
+  ],
+  "results": [
+    {
+      "betKey": "_run",
+      "targetTimestamp": 0,
+      "error": "All forecasts failed"
+    },
+    {
+      "betKey": "HBAR:1772798400",
+      "targetTimestamp": 1772798400,
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 6, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text.",
+      "raw": "Min: [0.10200], Max: [0.11800]",
+      "priceMinStr": "0.10200",
+      "priceMaxStr": "0.11800",
+      "dryRun": true
+    },
+    {
+      "betKey": "HBAR:1772884800",
+      "targetTimestamp": 1772884800,
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 7, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text.",
+      "raw": "Min: [0.10350], Max: [0.12650]",
+      "priceMinStr": "0.10350",
+      "priceMaxStr": "0.12650",
+      "dryRun": true
+    },
+    {
+      "betKey": "HBAR:1772971200",
+      "targetTimestamp": 1772971200,
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 8, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text.",
+      "raw": "Min: [0.11320], Max: [0.12980]",
+      "priceMinStr": "0.11320",
+      "priceMaxStr": "0.12980",
+      "dryRun": true
+    },
+    {
+      "betKey": "HBAR:1773057600",
+      "targetTimestamp": 1773057600,
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 9, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text.",
+      "raw": "Min: [0.09500], Max: [0.12500]",
+      "priceMinStr": "0.09500",
+      "priceMaxStr": "0.12500",
+      "dryRun": true
+    },
+    {
+      "betKey": "HBAR:1773144000",
+      "targetTimestamp": 1773144000,
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 10, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text.",
+      "raw": "Min: [0.10600], Max: [0.12400]",
+      "priceMinStr": "0.10600",
+      "priceMaxStr": "0.12400",
+      "dryRun": true
+    },
+    {
+      "betKey": "HBAR:1773230400",
+      "targetTimestamp": 1773230400,
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 11, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text.",
+      "raw": "Min: [0.10120], Max: [0.11880]",
+      "priceMinStr": "0.10120",
+      "priceMaxStr": "0.11880",
+      "dryRun": true
+    },
+    {
+      "betKey": "HBAR:1773316800",
+      "targetTimestamp": 1773316800,
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 12, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text.",
+      "raw": "Min: 0.08500, Max: 0.11500",
+      "priceMinStr": "0.08500",
+      "priceMaxStr": "0.11500",
+      "dryRun": true
+    },
+    {
+      "betKey": "HBAR:1772798400",
+      "targetTimestamp": 1772798400,
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 6, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text.",
+      "raw": "Min: [0.12700], Max: [0.14300]",
+      "priceMinStr": "0.12700",
+      "priceMaxStr": "0.14300",
+      "txHash": "0x4259d8da537895616f46cff27957863cb5b6cd9476429c6ca89ec4142b0532c4",
+      "status": 1
+    },
+    {
+      "betKey": "HBAR:1772884800",
+      "targetTimestamp": 1772884800,
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 7, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text.",
+      "raw": "Min: [0.11200], Max: [0.12850]",
+      "priceMinStr": "0.11200",
+      "priceMaxStr": "0.12850",
+      "txHash": "0x39540d8e45fae1f4a050dbc25022e946937249fd96377d260bccf46cffc12ced",
+      "status": 1
+    },
+    {
+      "betKey": "HBAR:1772971200",
+      "targetTimestamp": 1772971200,
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 8, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text.",
+      "raw": "Min: [0.08500], Max: [0.12500]",
+      "priceMinStr": "0.08500",
+      "priceMaxStr": "0.12500",
+      "txHash": "0xe90bf049b2a27c9d373b9c21541304aaaed8f142baf0513b391d24bd014472ea",
+      "status": 1
+    },
+    {
+      "betKey": "HBAR:1773057600",
+      "targetTimestamp": 1773057600,
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 9, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text.",
+      "raw": "Min: [0.08700], Max: [0.10300]",
+      "priceMinStr": "0.08700",
+      "priceMaxStr": "0.10300",
+      "txHash": "0x1af5f4318ef61c2ef6b58e49783ce3703db9cee20f72b3b28b3f266d380afa5a",
+      "status": 1
+    },
+    {
+      "betKey": "HBAR:1773144000",
+      "targetTimestamp": 1773144000,
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 10, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text.",
+      "raw": "Min: [0.09500], Max: [0.12500]",
+      "priceMinStr": "0.09500",
+      "priceMaxStr": "0.12500",
+      "txHash": "0x1112642e596d26736756308132e3f06714722509ab2bc2d76c5225c5e65880d8",
+      "status": 1
+    },
+    {
+      "betKey": "HBAR:1773230400",
+      "targetTimestamp": 1773230400,
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 11, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text.",
+      "raw": "Min: [0.10500], Max: [0.14500]",
+      "priceMinStr": "0.10500",
+      "priceMaxStr": "0.14500",
+      "txHash": "0x5462103c5bc4316ec112513323831884dc460dc0e4faa5cef1473f66ff0345f5",
+      "status": 1
+    },
+    {
+      "betKey": "HBAR:1773316800",
+      "targetTimestamp": 1773316800,
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 12, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text.",
+      "raw": "Min: [0.09500], Max: [0.14500]",
+      "priceMinStr": "0.09500",
+      "priceMaxStr": "0.14500",
+      "txHash": "0x39e6ff24450fd9980e29b7b4ac96740a475c78c0b11410f34a1cb432ad5af782",
+      "status": 1
+    }
+  ],
+  "skippedDuplicates": []
+}

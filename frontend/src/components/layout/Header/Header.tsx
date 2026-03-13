@@ -64,6 +64,9 @@ export function Header() {
         </div>
 
         <div className={headerStyles.right}>
+          <Link href="/oracle" className={headerStyles.navLink + ' flex items-center gap-2 text-sm font-medium'}>
+            <span className="hidden sm:inline">Oracle</span>
+          </Link>
           <Link href="/my-bets" className={headerStyles.navLink + ' flex items-center gap-2 text-sm font-medium'}>
             <Wallet className="w-3.5 h-3.5 opacity-70" />
             <span className="hidden sm:inline">My bets</span>

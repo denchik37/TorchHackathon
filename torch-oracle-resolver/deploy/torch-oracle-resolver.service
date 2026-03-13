@@ -1,0 +1,15 @@
+[Unit]
+Description=Torch Oracle Resolver (one-shot run)
+After=network.target
+
+[Service]
+Type=oneshot
+User=torch
+WorkingDirectory=/opt/torch-oracle-resolver
+EnvironmentFile=/opt/torch-oracle-resolver/.env
+ExecStart=/usr/bin/npm run resolve:once
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

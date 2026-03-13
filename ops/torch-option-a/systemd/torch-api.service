@@ -1,0 +1,18 @@
+# Template: copy to /etc/systemd/system/torch-api.service
+# Read-only API (port 3001). Edit paths and User before enabling.
+
+[Unit]
+Description=Torch read-only API (Option A)
+After=network.target
+
+[Service]
+Type=simple
+User=torch
+WorkingDirectory=/opt/torch-api
+EnvironmentFile=/etc/torch/torch-api.env
+ExecStart=/usr/bin/node dist/server.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
