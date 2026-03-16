@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "tsx watch src/runner/run-daily-bet.ts",
     "daily": "tsx src/runner/run-daily-bet.ts",
+    "doctor": "tsx scripts/check-operator.ts",
     "build": "tsc",
     "lint": "eslint \"src/**/*.ts\"",
     "test": "vitest run",

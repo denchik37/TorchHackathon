@@ -30,6 +30,19 @@ function getDayTimestampRange(date: Date) {
   };
 }
 
+function price8dpToUsd(raw: string | number): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return NaN;
+  return n / 1e8;
+}
+
+function isSanePriceRange(min: number, max: number): boolean {
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return false;
+  if (min <= 0 || max <= min) return false;
+  if (min > 10 || max > 10) return false;
+  return true;
+}
+
 export interface PriceRangeSelectorProps {
   minPrice: number;
   maxPrice: number;
@@ -69,6 +82,18 @@ export function PriceRangeSelector({
     fetchPolicy: 'cache-and-network',
   });
 
+  useEffect(() => {
+    if (!betsLoading && (!betsData?.bets || betsData.bets.length === 0)) {
+      // Dev-only log to validate date alignment
+      // eslint-disable-next-line no-console
+      console.debug('PriceRangeSelector: no bets for day', {
+        selectedDate: selectedDate.toISOString(),
+        dayStart: startTimestamp,
+        dayEnd: endTimestamp,
+      });
+    }
+  }, [betsLoading, betsData, selectedDate, startTimestamp, endTimestamp]);
+
   const totalVolumeHbar = useMemo(() => {
     if (betsLoading || !betsData?.bets) return 0;
     return betsData.bets.reduce((sum: number, bet: { stake: string }) => {
@@ -98,28 +123,44 @@ export function PriceRangeSelector({
       }
       return data;
     }
-    const totalStakeAcrossAllBets = betsData.bets.reduce((sum: number, bet: { stake: string }) => {
-      return sum + parseFloat(formatTinybarsToHbar(bet.stake));
-    }, 0);
+
+    const saneBets = betsData.bets.filter(
+      (bet: { priceMin: string; priceMax: string }) => {
+        const min = price8dpToUsd(bet.priceMin);
+        const max = price8dpToUsd(bet.priceMax);
+        return isSanePriceRange(min, max);
+      }
+    );
+
+    const totalStakeAcrossAllBets = saneBets.reduce(
+      (sum: number, bet: { stake: string }) =>
+        sum + parseFloat(formatTinybarsToHbar(bet.stake)),
+      0
+    );
     const data: Array<{ min: number; max: number; center: number; prob: number; totalStake: number; rawScore: number; amount: number; isSelected: boolean }> = [];
     for (let i = 0; i < bins; i++) {
       const binMin = minPrice + i * binSize;
       const binMax = binMin + binSize;
       const center = (binMin + binMax) / 2;
-      const betsInBin = betsData.bets.filter((bet: { priceMin: string; priceMax: string }) => {
-        const betMinPrice = parseFloat(formatTinybarsToHbar(bet.priceMin));
-        const betMaxPrice = parseFloat(formatTinybarsToHbar(bet.priceMax));
+      const betsInBin = saneBets.filter((bet: { priceMin: string; priceMax: string }) => {
+        const betMinPrice = price8dpToUsd(bet.priceMin);
+        const betMaxPrice = price8dpToUsd(bet.priceMax);
         return betMinPrice <= binMax && betMaxPrice >= binMin;
       });
-      const totalStakeInBin = betsInBin.reduce((sum: number, bet: { stake: string; priceMin: string; priceMax: string }) => {
-        const stake = parseFloat(formatTinybarsToHbar(bet.stake));
-        const betMinPrice = parseFloat(formatTinybarsToHbar(bet.priceMin));
-        const betMaxPrice = parseFloat(formatTinybarsToHbar(bet.priceMax));
-        const overlapMin = Math.max(binMin, betMinPrice);
-        const overlapMax = Math.min(binMax, betMaxPrice);
-        const overlapRatio = Math.max(0, (overlapMax - overlapMin) / (betMaxPrice - betMinPrice));
-        return sum + stake * overlapRatio;
-      }, 0);
+      const totalStakeInBin = betsInBin.reduce(
+        (sum: number, bet: { stake: string; priceMin: string; priceMax: string }) => {
+          const stake = parseFloat(formatTinybarsToHbar(bet.stake));
+          const betMinPrice = price8dpToUsd(bet.priceMin);
+          const betMaxPrice = price8dpToUsd(bet.priceMax);
+          const overlapMin = Math.max(binMin, betMinPrice);
+          const overlapMax = Math.min(binMax, betMaxPrice);
+          const denom = betMaxPrice - betMinPrice;
+          if (denom <= 0) return sum;
+          const overlapRatio = Math.max(0, (overlapMax - overlapMin) / denom);
+          return sum + stake * overlapRatio;
+        },
+        0
+      );
       const prob = totalStakeAcrossAllBets > 0 ? totalStakeInBin / totalStakeAcrossAllBets : 0;
       data.push({
         min: binMin,
