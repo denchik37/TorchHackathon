@@ -86,7 +86,10 @@ export default function OraclePage() {
   const unresolvedBets = unresolvedData?.bets ?? [];
   const buckets = bucketsData?.buckets ?? [];
   const unresolvedBuckets = buckets.filter((b: { aggregationComplete: boolean }) => !b.aggregationComplete);
-  const uniqueTimestamps = useMemo(() => Array.from(new Set(unresolvedBets.map((b: { targetTimestamp: string }) => Number(b.targetTimestamp)))).sort((a, b) => a - b), [unresolvedBets]);
+  const uniqueTimestamps = useMemo((): number[] => {
+    const timestamps = unresolvedBets.map((b: { targetTimestamp: string }) => Number(b.targetTimestamp)) as number[];
+    return Array.from(new Set(timestamps)).sort((a, b) => a - b);
+  }, [unresolvedBets]);
 
   const nowUnix = Math.floor(Date.now() / 1000);
   const bufferSec = 120;
@@ -331,7 +334,7 @@ export default function OraclePage() {
           <div className="space-y-4">
             <Card className="rounded-xl border border-border bg-card">
               <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground mb-2">Resolver run artifacts (from torch-oracle-resolver/runs). Set ORACLE_RUNS_PATH to show data.</p>
+                <p className="text-sm text-muted-foreground mb-2">Resolver run artifacts are read from Hetzner via torch-api. Set TORCH_API_BASE and DASHBOARD_API_TOKEN to show data. Execution (setPricesForTimestamps, processBatch) runs only on Hetzner.</p>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -343,7 +346,7 @@ export default function OraclePage() {
                     <tbody>
                       {runs.length === 0 ? (
                         <tr>
-                          <td colSpan={2} className="py-4 text-center text-muted-foreground">No runs or path not configured.</td>
+                          <td colSpan={2} className="py-4 text-center text-muted-foreground">No runs or Torch API not configured.</td>
                         </tr>
                       ) : (
                         runs.map((r) => (
