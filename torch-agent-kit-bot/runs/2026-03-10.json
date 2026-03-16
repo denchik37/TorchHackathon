@@ -1,0 +1,41 @@
+{
+  "runId": "1a57bcbd-b58e-4cf5-9b88-223282207175",
+  "timestampUtc": "2026-03-10T15:06:48.702Z",
+  "provider": {
+    "model": "gpt-5.2-chat-latest",
+    "reasoning_effort": "medium",
+    "max_completion_tokens": 2048
+  },
+  "forecasts": [
+    {
+      "betKey": "HBAR:1773316800",
+      "targetTimestamp": 1773316800,
+      "monthDay": "March 12",
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 12, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text.",
+      "raw": "Min: 0.08500, Max: 0.11500",
+      "minStr": "0.08500",
+      "maxStr": "0.11500"
+    }
+  ],
+  "betParams": [
+    {
+      "betKey": "HBAR:1773316800",
+      "priceMinStr": "0.08500",
+      "priceMaxStr": "0.11500",
+      "priceMinInt": "8500000",
+      "priceMaxInt": "11500000",
+      "stakeHbar": "0.1"
+    }
+  ],
+  "results": [
+    {
+      "betKey": "HBAR:1773316800",
+      "targetTimestamp": 1773316800,
+      "dryRun": true,
+      "prompt": "Give me a price range that HBAR token is likely to hit with 60% probability on March 12, at 12:00 UTC. Format: 'Min: [0.00000], Max: [0.00000]' - output this quantified forecast only, not need for explanations, or any other text.",
+      "raw": "Min: 0.08500, Max: 0.11500",
+      "minStr": "0.08500",
+      "maxStr": "0.11500"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "name": "torch-agent-kit-bot",
+  "version": "1.0.0",
+  "description": "Daily Torch Bet Agent (Hedera Agent Kit / SDK): places one bet per day for next eligible 12:00 UTC target using OpenAI GPT-5.2.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx watch src/runner/run-daily-bet.ts",
+    "daily": "tsx src/runner/run-daily-bet.ts",
+    "build": "tsc",
+    "lint": "eslint \"src/**/*.ts\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dashboard:dev": "npm --prefix dashboard run dev",
+    "dashboard:build": "npm --prefix dashboard run build",
+    "dashboard:start": "npm --prefix dashboard run start"
+  },
+  "dependencies": {
+    "@hashgraph/sdk": "^2.52.0",
+    "dotenv": "^17.3.1",
+    "openai": "^4.73.0",
+    "pino": "^9.5.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@typescript-eslint/eslint-plugin": "^8.15.0",
+    "@typescript-eslint/parser": "^8.15.0",
+    "eslint": "^9.15.0",
+    "eslint-config-prettier": "^9.1.0",
+    "pino-pretty": "^11.3.0",
+    "prettier": "^3.3.3",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

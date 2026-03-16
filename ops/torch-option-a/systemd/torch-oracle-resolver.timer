@@ -1,0 +1,13 @@
+# Template: copy to /etc/systemd/system/torch-oracle-resolver.timer
+# Runs torch-oracle-resolver.service every 15 minutes.
+
+[Unit]
+Description=Run Torch oracle resolver every 15 min
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+Persistent=yes
+
+[Install]
+WantedBy=timers.target

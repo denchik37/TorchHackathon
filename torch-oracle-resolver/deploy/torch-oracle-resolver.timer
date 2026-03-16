@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Torch Oracle Resolver every 15 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+AccuracySec=1min
+Persistent=yes
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,18 @@
+# Template: copy to /etc/systemd/system/torch-oracle-resolver.service
+# One-shot resolver run. Triggered by torch-oracle-resolver.timer.
+
+[Unit]
+Description=Torch oracle resolver (oneshot)
+After=network.target
+
+[Service]
+Type=oneshot
+User=torch
+WorkingDirectory=/opt/torch-oracle-resolver
+EnvironmentFile=/etc/torch/torch-oracle-resolver.env
+ExecStart=/usr/bin/npm run resolve:once
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
