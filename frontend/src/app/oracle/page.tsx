@@ -86,7 +86,13 @@ export default function OraclePage() {
   const unresolvedBets = unresolvedData?.bets ?? [];
   const buckets = bucketsData?.buckets ?? [];
   const unresolvedBuckets = buckets.filter((b: { aggregationComplete: boolean }) => !b.aggregationComplete);
-  const uniqueTimestamps = useMemo(() => Array.from(new Set(unresolvedBets.map((b: { targetTimestamp: string }) => Number(b.targetTimestamp)))).sort((a, b) => a - b), [unresolvedBets]);
+  const uniqueTimestamps = useMemo(() => {
+  const nums: number[] = unresolvedBets
+    .map((b: { targetTimestamp: string }) => Number(b.targetTimestamp))
+    .filter((n) => Number.isFinite(n));
+
+  return Array.from(new Set<number>(nums)).sort((a: number, b: number) => a - b);
+}, [unresolvedBets]);
 
   const nowUnix = Math.floor(Date.now() / 1000);
   const bufferSec = 120;
