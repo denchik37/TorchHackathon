@@ -156,7 +156,7 @@ export async function main(): Promise<void> {
     };
   }
 
-  const client = env.DRY_RUN ? null : createHederaClient();
+  const client = env.DRY_RUN ? null : await createHederaClient({ log });
 
   for (const { params, betKey: key, prompt, raw, minStr, maxStr } of betParamsList) {
     if (successfulKeys.has(key)) {

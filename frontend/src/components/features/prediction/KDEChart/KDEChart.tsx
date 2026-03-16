@@ -11,7 +11,7 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import * as d3 from 'd3';
-import { cn, formatTinybarsToHbar } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { kdeChartStyles } from './KDEChart.styles';
 import { Button } from '@/components/ui/button';
 import { Maximize2, ZoomIn, ZoomOut, RotateCcw, Move } from 'lucide-react';
@@ -43,6 +43,12 @@ const GET_BETS = gql`
     }
   }
 `;
+
+function price8dpToUsd(raw: string | number): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return NaN;
+  return n / 1e8;
+}
 
 // Enhanced KDE calculation with adaptive bandwidth
 function calculateAdaptiveBandwidth(
@@ -184,11 +190,12 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
 
       const processData = (rawData: any[]) => {
         const now = new Date();
+        const pastCutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // last 7 days
         const processed = rawData
           .map((d) => {
             const originalWeight = parseInt(d.weight);
-            const minPrice = formatTinybarsToHbar(d.priceMin);
-            const maxPrice = formatTinybarsToHbar(d.priceMax);
+            const minPrice = price8dpToUsd(d.priceMin);
+            const maxPrice = price8dpToUsd(d.priceMax);
 
             return {
               time: new Date(parseInt(d.targetTimestamp) * 1000),
@@ -198,7 +205,7 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
               priceRange: Number(maxPrice) - Number(minPrice),
             };
           })
-          .filter((d) => d.time > now);
+          .filter((d) => d.time > pastCutoff);
 
         // Remove outliers using IQR method
         const prices = processed.map((d) => d.price);
