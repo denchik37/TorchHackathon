@@ -89,11 +89,11 @@ export default function OraclePage() {
   const uniqueTimestamps = useMemo(() => {
   const nums: number[] = unresolvedBets
     .map((b: { targetTimestamp: string }) => Number(b.targetTimestamp))
-    .filter((n) => Number.isFinite(n));
+    .filter((n: number) => Number.isFinite(n));
 
-  return Array.from(new Set<number>(nums)).sort((a: number, b: number) => a - b);
-}, [unresolvedBets]);
-
+    return Array.from(new Set<number>(nums)).sort((a: number, b: number) => a - b);
+  }, [unresolvedBets]);
+  
   const nowUnix = Math.floor(Date.now() / 1000);
   const bufferSec = 120;
   const isEligible = (ts: number) => ts <= nowUnix - bufferSec;
