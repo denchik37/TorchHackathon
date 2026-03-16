@@ -13,6 +13,31 @@ import {
 import { getEnv } from '../config/env.js';
 import { logger } from '../logger.js';
 
+function parsePrivateKey(input: string): PrivateKey {
+  const raw = input.trim();
+  const withoutPrefix = raw.startsWith('0x') || raw.startsWith('0X') ? raw.slice(2) : raw;
+
+  if (/^[0-9a-fA-F]{64}$/.test(withoutPrefix)) {
+    // Raw 32-byte ECDSA private key
+    return PrivateKey.fromStringECDSA(withoutPrefix);
+  }
+
+  if (withoutPrefix.startsWith('302e')) {
+    // DER hex
+    return PrivateKey.fromStringDer(withoutPrefix);
+  }
+
+  return PrivateKey.fromString(raw);
+}
+
+function parseContractId(input: string): ContractId {
+  const raw = input.trim();
+  if ((raw.startsWith('0x') || raw.startsWith('0X')) && raw.length === 42) {
+    return ContractId.fromSolidityAddress(raw.slice(2));
+  }
+  return ContractId.fromString(raw);
+}
+
 export function createHederaClient(): Client {
   const env = getEnv();
   const client =
@@ -20,10 +45,20 @@ export function createHederaClient(): Client {
 
   const accountId = AccountId.fromString(env.ADMIN_ACCOUNT_ID);
   const keyStr = env.ADMIN_PRIVATE_KEY;
-  const privateKey = keyStr.startsWith('30')
-    ? PrivateKey.fromStringDer(keyStr)
-    : PrivateKey.fromString(keyStr);
+  const privateKey = parsePrivateKey(keyStr);
+
   client.setOperator(accountId, privateKey);
+
+  logger.info(
+    {
+      adminAccountId: env.ADMIN_ACCOUNT_ID,
+      network: env.NETWORK,
+      contractId: env.TORCH_CONTRACT_ID,
+      keyFormat: keyStr.trim().startsWith('0x') || keyStr.trim().startsWith('0X') ? 'hex' : 'other',
+    },
+    'Resolver Hedera client configured'
+  );
+
   return client;
 }
 
@@ -45,7 +80,7 @@ export async function setPricesForTimestamps(
   prices8dp: bigint[]
 ): Promise<{ txId: string; receipt: TransactionReceipt }> {
   const env = getEnv();
-  const contractId = ContractId.fromString(env.TORCH_CONTRACT_ID);
+  const contractId = parseContractId(env.TORCH_CONTRACT_ID);
 
   const tsLongs = timestamps.map((t) => Long.fromNumber(t, true));
   const tx = new ContractExecuteTransaction()
@@ -73,7 +108,7 @@ export async function processBatch(
   bucketIndex: number
 ): Promise<{ txId: string; receipt: TransactionReceipt }> {
   const env = getEnv();
-  const contractId = ContractId.fromString(env.TORCH_CONTRACT_ID);
+  const contractId = parseContractId(env.TORCH_CONTRACT_ID);
 
   const tx = new ContractExecuteTransaction()
     .setContractId(contractId)
@@ -107,7 +142,7 @@ export async function getBucketInfo(
   bucketIndex: number
 ): Promise<BucketInfo | null> {
   const env = getEnv();
-  const contractId = ContractId.fromString(env.TORCH_CONTRACT_ID);
+  const contractId = parseContractId(env.TORCH_CONTRACT_ID);
 
   try {
     const query = new ContractCallQuery()
