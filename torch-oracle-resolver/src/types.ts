@@ -58,6 +58,18 @@ export interface ResolverRunArtifact {
     nextProcessIndex?: number;
     totalBets?: number;
   }[];
+  bucketBlocked?: {
+    bucketId: string;
+    missingTs: number[];
+    notEligibleTs: number[];
+    reason: string;
+  }[];
+  bucketErrors?: {
+    bucketId: string;
+    txId: string;
+    status?: string;
+    errorMessage?: string;
+  }[];
   errors: { message: string; stack?: string }[];
 }
 

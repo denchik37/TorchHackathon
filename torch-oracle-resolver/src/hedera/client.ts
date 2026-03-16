@@ -6,6 +6,7 @@ import {
   ContractExecuteTransaction,
   ContractFunctionParameters,
   ContractCallQuery,
+  TransactionRecordQuery,
   Long,
   TransactionReceipt,
   TransactionResponse,
@@ -103,28 +104,73 @@ export async function setPricesForTimestamps(
 /**
  * Call processBatch(bucket) on TorchPredictionMarket.
  */
+export interface ProcessBatchResultOk {
+  ok: true;
+  txId: string;
+  receipt: TransactionReceipt;
+}
+
+export interface ProcessBatchResultError {
+  ok: false;
+  txId: string;
+  status?: string;
+  errorMessage?: string;
+}
+
 export async function processBatch(
   client: Client,
   bucketIndex: number
-): Promise<{ txId: string; receipt: TransactionReceipt }> {
+): Promise<ProcessBatchResultOk | ProcessBatchResultError> {
   const env = getEnv();
   const contractId = parseContractId(env.TORCH_CONTRACT_ID);
 
-  const tx = new ContractExecuteTransaction()
-    .setContractId(contractId)
-    .setGas(10_000_000)
-    .setFunction(
-      'processBatch',
-      new ContractFunctionParameters().addUint256(
-        Long.fromNumber(bucketIndex, true)
-      )
+  let txId = '';
+  try {
+    const tx = new ContractExecuteTransaction()
+      .setContractId(contractId)
+      .setGas(10_000_000)
+      .setFunction(
+        'processBatch',
+        new ContractFunctionParameters().addUint256(
+          Long.fromNumber(bucketIndex, true)
+        )
+      );
+
+    const response = (await tx.execute(client)) as TransactionResponse;
+    txId = response.transactionId?.toString() ?? '';
+    const receipt = await response.getReceipt(client);
+    logger.info({ txId, bucket: bucketIndex }, 'processBatch sent');
+    return { ok: true, txId, receipt };
+  } catch (err) {
+    const e = err as any;
+    let errorMessage: string | undefined;
+    let statusStr: string | undefined;
+    try {
+      const txIdObj = e?.transactionId;
+      if (txIdObj) {
+        const record = await new TransactionRecordQuery()
+          .setTransactionId(txIdObj)
+          .execute(client);
+        errorMessage = record.contractFunctionResult?.errorMessage ?? undefined;
+        statusStr = record.receipt?.status?.toString?.();
+        txId = txId || txIdObj.toString?.() || '';
+      }
+    } catch {
+      // ignore record fetch errors
+    }
+
+    logger.error(
+      { bucketIndex, txId, status: statusStr, errorMessage, err: e },
+      'processBatch revert or error'
     );
 
-  const response = (await tx.execute(client)) as TransactionResponse;
-  const receipt = await response.getReceipt(client);
-  const txId = response.transactionId?.toString() ?? '';
-  logger.info({ txId, bucket: bucketIndex }, 'processBatch sent');
-  return { txId, receipt };
+    return {
+      ok: false,
+      txId,
+      status: statusStr,
+      errorMessage,
+    };
+  }
 }
 
 export interface BucketInfo {

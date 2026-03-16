@@ -21,6 +21,8 @@ export async function runResolveOnce(): Promise<ResolverRunArtifact> {
   const timestampUtc = new Date().toISOString();
   const mode = env.DRY_RUN ? 'dryRun' : 'live';
   const errors: ResolverRunArtifact['errors'] = [];
+  const bucketBlocked: NonNullable<ResolverRunArtifact['bucketBlocked']> = [];
+  const bucketErrors: NonNullable<ResolverRunArtifact['bucketErrors']> = [];
   const priceChecks: PriceCheckResult[] = [];
   const setPricesBatchTxIds: string[] = [];
   const processBatchTxIds: ResolverRunArtifact['txs']['processBatchTxIds'] = [];
@@ -77,6 +79,7 @@ export async function runResolveOnce(): Promise<ResolverRunArtifact> {
     let newCacheCount = 0;
     const acceptedTimestamps: number[] = [];
     const acceptedPrices8dp: bigint[] = [];
+    const acceptedPriceByTs = new Map<number, number>();
 
     const getCachedPrice = (ts: number): number | null => {
       const key = String(ts);
@@ -179,6 +182,7 @@ export async function runResolveOnce(): Promise<ResolverRunArtifact> {
       if (status === 'accepted' && cgPrice != null) {
         acceptedTimestamps.push(ts);
         acceptedPrices8dp.push(parseUnits(cgPrice.toFixed(8), 8));
+        acceptedPriceByTs.set(ts, cgPrice);
       }
     }
 
@@ -200,7 +204,19 @@ export async function runResolveOnce(): Promise<ResolverRunArtifact> {
         }
       }
 
-      const bucketsToProcess = Array.from(work.bucketsById.keys()).map(Number).slice(0, env.MAX_BUCKETS_PER_RUN);
+      // Build bucket -> timestamps mapping and gate by price availability and eligibility
+      const bucketToTimestamps = new Map<number, Set<number>>();
+      for (const [ts, bets] of work.timestampsToBets.entries()) {
+        for (const bet of bets) {
+          const set = bucketToTimestamps.get(bet.bucket) ?? new Set<number>();
+          set.add(ts);
+          bucketToTimestamps.set(bet.bucket, set);
+        }
+      }
+
+      const bucketsToProcess = Array.from(work.bucketsById.keys())
+        .map(Number)
+        .slice(0, env.MAX_BUCKETS_PER_RUN);
 
       for (const bucketIndex of bucketsToProcess) {
         const bucketId = String(bucketIndex);
@@ -211,6 +227,46 @@ export async function runResolveOnce(): Promise<ResolverRunArtifact> {
         const client = createHederaClient();
         let txCount = 0;
 
+        const tsSet = bucketToTimestamps.get(bucketIndex) ?? new Set<number>();
+        const uniqueTs = Array.from(tsSet.values());
+
+        logger.info(
+          { bucketIndex, tsCount: uniqueTs.length },
+          'Processing bucket candidate'
+        );
+
+        const missingTs: number[] = [];
+        const notEligibleTs: number[] = [];
+        for (const ts of uniqueTs) {
+          const hasAcceptedPrice = acceptedPriceByTs.has(ts);
+          const wasPreviouslySet = state.resolvedTimestamps[String(ts)] != null;
+          if (!hasAcceptedPrice && !wasPreviouslySet) {
+            missingTs.push(ts);
+          }
+          if (ts > cutoffEligible) {
+            notEligibleTs.push(ts);
+          }
+        }
+
+        if (missingTs.length > 0 || notEligibleTs.length > 0) {
+          bucketBlocked.push({
+            bucketId,
+            missingTs,
+            notEligibleTs,
+            reason: 'Bucket has timestamps without prices or not yet eligible',
+          });
+          logger.warn(
+            {
+              bucketIndex,
+              missingCount: missingTs.length,
+              notEligibleCount: notEligibleTs.length,
+              sampleMissing: missingTs.slice(0, 3),
+            },
+            'Skipping bucket due to missing or not-eligible timestamps'
+          );
+          continue;
+        }
+
         while (txCount < env.MAX_PROCESS_BATCH_TX_PER_BUCKET) {
           const info = await getBucketInfo(client, bucketIndex);
           if (info?.aggregationComplete) {
@@ -220,6 +276,24 @@ export async function runResolveOnce(): Promise<ResolverRunArtifact> {
             break;
           }
           const res = await processBatch(client, bucketIndex);
+          if (!res.ok) {
+            bucketErrors.push({
+              bucketId,
+              txId: res.txId,
+              status: res.status,
+              errorMessage: res.errorMessage,
+            });
+            logger.error(
+              {
+                bucketIndex,
+                txId: res.txId,
+                status: res.status,
+                errorMessage: res.errorMessage,
+              },
+              'processBatch failed for bucket'
+            );
+            break;
+          }
           txIds.push(res.txId);
           txCount++;
           const updated = await getBucketInfo(client, bucketIndex);
@@ -270,6 +344,8 @@ export async function runResolveOnce(): Promise<ResolverRunArtifact> {
       processBatchTxIds,
     },
     bucketResults,
+    bucketBlocked,
+    bucketErrors,
     errors,
   };
 
