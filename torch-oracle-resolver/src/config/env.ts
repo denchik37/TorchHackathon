@@ -27,6 +27,13 @@ const envSchema = z.object({
   RESOLVE_CONCURRENCY: z.coerce.number().min(1).default(1),
   RESOLVER_TRIGGER_SECRET: z.string().optional(),
   RESOLVE_LOOP_INTERVAL_MS: z.coerce.number().optional(),
+  COINGECKO_MIN_DELAY_MS: z.coerce.number().min(0).default(1200),
+  COINGECKO_MAX_RETRIES: z.coerce.number().int().min(0).default(6),
+  COINGECKO_BACKOFF_BASE_MS: z.coerce.number().min(0).default(800),
+  COINGECKO_BACKOFF_MAX_MS: z.coerce.number().min(0).default(15000),
+  COINGECKO_JITTER_PCT: z.coerce.number().min(0).max(1).default(0.2),
+  COINGECKO_CACHE_TTL_DAYS: z.coerce.number().min(0).default(3650),
+  COINGECKO_CACHE_MAX_ENTRIES: z.coerce.number().int().min(0).default(20000),
 });
 
 export type Env = z.infer<typeof envSchema>;

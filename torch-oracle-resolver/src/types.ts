@@ -68,4 +68,9 @@ export interface ResolverState {
     { reason: string; lastSeenAt: string }
   >;
   resolvedTimestamps: Record<string, string>;
+  priceCache: Record<
+    string,
+    { priceUsd: number; fetchedAtUtc: string; source: 'coingecko' }
+  >;
+  priceCacheOrder: string[];
 }

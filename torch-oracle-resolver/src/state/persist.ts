@@ -1,5 +1,5 @@
 import { readFile, writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
+import { existsSync, renameSync } from 'fs';
 import { resolve } from 'path';
 import type { ResolverState, ResolverRunArtifact } from '../types.js';
 import { logger } from '../logger.js';
@@ -11,17 +11,21 @@ const defaultState: ResolverState = {
   lastRunAt: null,
   blockedTimestamps: {},
   resolvedTimestamps: {},
+  priceCache: {},
+  priceCacheOrder: [],
 };
 
 export async function loadState(): Promise<ResolverState> {
   try {
     if (!existsSync(STATE_PATH)) return { ...defaultState };
     const raw = await readFile(STATE_PATH, 'utf-8');
-    const parsed = JSON.parse(raw) as ResolverState;
+    const parsed = JSON.parse(raw) as Partial<ResolverState>;
     return {
       lastRunAt: parsed.lastRunAt ?? null,
       blockedTimestamps: parsed.blockedTimestamps ?? {},
       resolvedTimestamps: parsed.resolvedTimestamps ?? {},
+      priceCache: parsed.priceCache ?? {},
+      priceCacheOrder: parsed.priceCacheOrder ?? [],
     };
   } catch (e) {
     logger.warn({ err: e }, 'Could not load state, using default');
@@ -30,7 +34,9 @@ export async function loadState(): Promise<ResolverState> {
 }
 
 export async function saveState(state: ResolverState): Promise<void> {
-  await writeFile(STATE_PATH, JSON.stringify(state, null, 2), 'utf-8');
+  const tmpPath = `${STATE_PATH}.tmp`;
+  await writeFile(tmpPath, JSON.stringify(state, null, 2), 'utf-8');
+  renameSync(tmpPath, STATE_PATH);
   logger.debug('State saved');
 }
 

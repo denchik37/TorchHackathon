@@ -9,6 +9,58 @@ export interface CoinGeckoRangePoint {
   priceUsd: number;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+let lastRequestAt = 0;
+
+async function fetchWithBackoff(
+  url: string,
+  targetTimestampSeconds: number
+): Promise<Response> {
+  const env = getEnv();
+  const {
+    COINGECKO_MIN_DELAY_MS,
+    COINGECKO_MAX_RETRIES,
+    COINGECKO_BACKOFF_BASE_MS,
+    COINGECKO_BACKOFF_MAX_MS,
+    COINGECKO_JITTER_PCT,
+  } = env;
+
+  for (let attempt = 0; attempt <= COINGECKO_MAX_RETRIES; attempt++) {
+    const now = Date.now();
+    const sinceLast = now - lastRequestAt;
+    if (sinceLast < COINGECKO_MIN_DELAY_MS) {
+      await sleep(COINGECKO_MIN_DELAY_MS - sinceLast);
+    }
+
+    const res = await fetch(url);
+    lastRequestAt = Date.now();
+
+    if (res.status !== 429) {
+      return res;
+    }
+
+    const baseDelay = Math.min(
+      COINGECKO_BACKOFF_MAX_MS,
+      COINGECKO_BACKOFF_BASE_MS * Math.pow(2, attempt)
+    );
+    const jitterFactor = 1 + (Math.random() * 2 - 1) * COINGECKO_JITTER_PCT;
+    const delayMs = Math.max(0, Math.floor(baseDelay * jitterFactor));
+
+    logger.warn(
+      { ts: targetTimestampSeconds, attempt, delayMs },
+      'CoinGecko rate limited; backing off'
+    );
+    await sleep(delayMs);
+  }
+
+  throw new Error(
+    `CoinGecko 429 after max retries for ts=${targetTimestampSeconds}`
+  );
+}
+
 /**
  * Fetch HBAR price history around a target timestamp.
  * Uses market_chart/range with ±300s window, then picks closest point to ts (or avg within ±60s).
@@ -24,9 +76,12 @@ export async function fetchPriceAtTimestamp(
   }`;
 
   try {
-    const res = await fetch(url);
+    const res = await fetchWithBackoff(url, targetTimestampSeconds);
     if (!res.ok) {
-      logger.warn({ status: res.status, targetTimestampSeconds }, 'CoinGecko range request failed');
+      logger.warn(
+        { status: res.status, targetTimestampSeconds },
+        'CoinGecko range request failed'
+      );
       return null;
     }
     const json = (await res.json()) as { prices?: [number, number][] };

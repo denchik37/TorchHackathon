@@ -73,14 +73,71 @@ export async function runResolveOnce(): Promise<ResolverRunArtifact> {
     eligibleTimestamps = eligibleTimestamps.slice(0, maxTsPerRun);
 
     const state = await loadState();
+    let stateDirty = false;
+    let newCacheCount = 0;
     const acceptedTimestamps: number[] = [];
     const acceptedPrices8dp: bigint[] = [];
+
+    const getCachedPrice = (ts: number): number | null => {
+      const key = String(ts);
+      const entry = state.priceCache[key];
+      if (entry && entry.source === 'coingecko') {
+        logger.debug({ ts }, 'CoinGecko cache hit');
+        return entry.priceUsd;
+      }
+      return null;
+    };
+
+    const setCachedPrice = (ts: number, price: number) => {
+      const key = String(ts);
+      const exists = Boolean(state.priceCache[key]);
+      state.priceCache[key] = {
+        priceUsd: price,
+        fetchedAtUtc: timestampUtc,
+        source: 'coingecko',
+      };
+      if (!exists) {
+        state.priceCacheOrder.push(key);
+      }
+      stateDirty = true;
+      newCacheCount += 1;
+      logger.info({ ts, priceUsd: price }, 'Cached CoinGecko price');
+
+      const envLocal = env;
+      let evicted = 0;
+      while (state.priceCacheOrder.length > envLocal.COINGECKO_CACHE_MAX_ENTRIES) {
+        const oldest = state.priceCacheOrder.shift();
+        if (oldest && state.priceCache[oldest]) {
+          delete state.priceCache[oldest];
+          evicted += 1;
+        }
+      }
+      if (evicted > 0) {
+        logger.warn({ evictedCount: evicted }, 'Evicted old entries from CoinGecko cache');
+      }
+    };
+
+    const maybePersistState = async () => {
+      if (stateDirty && newCacheCount >= 10) {
+        await saveState(state);
+        stateDirty = false;
+        newCacheCount = 0;
+      }
+    };
 
     for (const ts of eligibleTimestamps) {
       if (state.resolvedTimestamps[String(ts)]) {
         continue;
       }
-      const cgPrice = await fetchPriceAtTimestamp(ts);
+
+      let cgPrice = getCachedPrice(ts);
+      if (cgPrice == null) {
+        cgPrice = await fetchPriceAtTimestamp(ts);
+        if (cgPrice != null && cgPrice > 0) {
+          setCachedPrice(ts, cgPrice);
+          await maybePersistState();
+        }
+      }
       let oraclePrice: number | null = null;
       try {
         oraclePrice = await fetchOraclePrice();
@@ -190,7 +247,9 @@ export async function runResolveOnce(): Promise<ResolverRunArtifact> {
       );
     }
 
-    await saveState(state);
+    if (stateDirty) {
+      await saveState(state);
+    }
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
     errors.push({ message: err.message, stack: err.stack });
