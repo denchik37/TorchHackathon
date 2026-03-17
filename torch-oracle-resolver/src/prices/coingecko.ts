@@ -61,51 +61,166 @@ async function fetchWithBackoff(
   );
 }
 
+const FETCH_WINDOW_SEC = 3600;
+const PREFERRED_WINDOW_SEC = 900;
+const MAX_DISTANCE_SEC = 7200;
+
+function isValidPrice(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0;
+}
+
 /**
  * Fetch HBAR price history around a target timestamp.
- * Uses market_chart/range with ±300s window, then picks closest point to ts (or avg within ±60s).
+ * Uses market_chart/range with a wide window (target ±3600s), then either
+ * averages points within ±900s or uses the single nearest point if within 7200s.
  */
 export async function fetchPriceAtTimestamp(
   targetTimestampSeconds: number
 ): Promise<number | null> {
   const env = getEnv();
-  const from = targetTimestampSeconds - 300;
-  const to = targetTimestampSeconds + 300;
+  const from = targetTimestampSeconds - FETCH_WINDOW_SEC;
+  const to = targetTimestampSeconds + FETCH_WINDOW_SEC;
   const url = `${COINGECKO_RANGE}?vs_currency=usd&from=${from}&to=${to}${
     env.COINGECKO_API_KEY ? `&x_cg_pro_api_key=${env.COINGECKO_API_KEY}` : ''
   }`;
+
+  logger.debug(
+    { targetTimestampSeconds, from, to },
+    'CoinGecko historical fetch range'
+  );
 
   try {
     const res = await fetchWithBackoff(url, targetTimestampSeconds);
     if (!res.ok) {
       logger.warn(
-        { status: res.status, targetTimestampSeconds },
+        { status: res.status, targetTimestampSeconds, from, to },
         'CoinGecko range request failed'
       );
       return null;
     }
-    const json = (await res.json()) as { prices?: [number, number][] };
-    const prices = json.prices ?? [];
-    if (prices.length === 0) return null;
+
+    const raw = await res.json();
+    const pricesRaw = raw?.prices;
+    if (!Array.isArray(pricesRaw)) {
+      logger.warn(
+        { targetTimestampSeconds, hasPrices: !!pricesRaw },
+        'CoinGecko response missing or invalid prices array'
+      );
+      return null;
+    }
 
     const targetMs = targetTimestampSeconds * 1000;
-    const within60s = prices.filter(
-      ([t]) => Math.abs(t - targetMs) <= 60 * 1000
-    );
-    const use = within60s.length >= 2 ? within60s : prices;
+    const points: { timestampMs: number; price: number }[] = [];
+    for (const entry of pricesRaw) {
+      if (!Array.isArray(entry) || entry.length < 2) continue;
+      const t = entry[0];
+      const p = entry[1];
+      if (typeof t !== 'number' || !Number.isFinite(t)) continue;
+      if (!isValidPrice(p)) continue;
+      points.push({ timestampMs: t, price: p });
+    }
 
-    let closest = use[0];
-    let minDiff = Math.abs(use[0][0] - targetMs);
-    for (let i = 1; i < use.length; i++) {
-      const d = Math.abs(use[i][0] - targetMs);
-      if (d < minDiff) {
-        minDiff = d;
-        closest = use[i];
+    logger.info(
+      { targetTimestampSeconds, from, to, pointCount: points.length },
+      'CoinGecko historical price points returned'
+    );
+
+    if (points.length === 0) {
+      logger.warn(
+        { targetTimestampSeconds, from, to },
+        'CoinGecko returned no valid price points; reason: no valid points in range'
+      );
+      return null;
+    }
+
+    const withinPreferred = points.filter(
+      (pt) => Math.abs(pt.timestampMs - targetMs) <= PREFERRED_WINDOW_SEC * 1000
+    );
+
+    let selectedPrice: number | null = null;
+
+    if (withinPreferred.length >= 1) {
+      const avg =
+        withinPreferred.reduce((sum, pt) => sum + pt.price, 0) /
+        withinPreferred.length;
+      if (isValidPrice(avg)) {
+        selectedPrice = avg;
+        const nearestInGroup = withinPreferred.reduce((best, pt) =>
+          Math.abs(pt.timestampMs - targetMs) <
+          Math.abs(best.timestampMs - targetMs)
+            ? pt
+            : best
+        );
+        const diffSec = Math.abs(nearestInGroup.timestampMs - targetMs) / 1000;
+        logger.info(
+          {
+            targetTimestampSeconds,
+            nearestPointTimestampSec: Math.round(nearestInGroup.timestampMs / 1000),
+            diffSec: Math.round(diffSec * 10) / 10,
+            pointsAveraged: withinPreferred.length,
+            selectedPrice: avg,
+          },
+          'CoinGecko historical: using average of points within preferred window'
+        );
+      } else {
+        logger.warn(
+          { targetTimestampSeconds, avg, pointsAveraged: withinPreferred.length },
+          'CoinGecko historical: average of points within ±900s invalid (non-finite or <= 0), falling back to nearest'
+        );
       }
     }
-    return closest[1];
+
+    if (selectedPrice == null) {
+      let nearest = points[0];
+      let minDiffMs = Math.abs(points[0].timestampMs - targetMs);
+      for (let i = 1; i < points.length; i++) {
+        const d = Math.abs(points[i].timestampMs - targetMs);
+        if (d < minDiffMs) {
+          minDiffMs = d;
+          nearest = points[i];
+        }
+      }
+      const diffSec = minDiffMs / 1000;
+
+      if (diffSec > MAX_DISTANCE_SEC) {
+        logger.warn(
+          {
+            targetTimestampSeconds,
+            nearestPointTimestampSec: Math.round(nearest.timestampMs / 1000),
+            diffSec: Math.round(diffSec * 10) / 10,
+            maxAllowedSec: MAX_DISTANCE_SEC,
+          },
+          'CoinGecko historical: nearest point too far; reason: exceeds max distance'
+        );
+        return null;
+      }
+
+      if (!isValidPrice(nearest.price)) {
+        logger.warn(
+          { targetTimestampSeconds, nearestPrice: nearest.price },
+          'CoinGecko historical: nearest point price invalid; reason: non-finite or <= 0'
+        );
+        return null;
+      }
+
+      selectedPrice = nearest.price;
+      logger.info(
+        {
+          targetTimestampSeconds,
+          nearestPointTimestampSec: Math.round(nearest.timestampMs / 1000),
+          diffSec: Math.round(diffSec * 10) / 10,
+          selectedPrice: nearest.price,
+        },
+        'CoinGecko historical: using single nearest point'
+      );
+    }
+
+    return selectedPrice;
   } catch (e) {
-    logger.error({ err: e, targetTimestampSeconds }, 'CoinGecko fetch error');
+    logger.error(
+      { err: e, targetTimestampSeconds },
+      'CoinGecko fetch error'
+    );
     return null;
   }
 }
