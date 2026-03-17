@@ -59,7 +59,7 @@ async function fetchPythHbarUsd(): Promise<number | null> {
     if (!res.ok) return null;
     const data = (await res.json()) as { price?: number; value?: number };
     const value = data.price ?? data.value;
-    return Number.isFinite(value) ? value : null;
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
   } catch (e) {
     logger.warn({ err: e }, 'Pyth fetch failed');
     return null;

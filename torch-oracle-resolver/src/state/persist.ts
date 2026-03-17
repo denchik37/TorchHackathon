@@ -1,11 +1,20 @@
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { existsSync, renameSync } from 'fs';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
 import type { ResolverState, ResolverRunArtifact } from '../types.js';
 import { logger } from '../logger.js';
 
-const RUNS_DIR = resolve(process.cwd(), 'runs');
-const STATE_PATH = resolve(process.cwd(), 'state.json');
+function getRunsDirFromEnv(): string {
+  return process.env.RESOLVER_RUNS_DIR
+    ? resolve(process.env.RESOLVER_RUNS_DIR)
+    : resolve(process.cwd(), 'runs');
+}
+
+function getStatePathFromEnv(): string {
+  return process.env.RESOLVER_STATE_PATH
+    ? resolve(process.env.RESOLVER_STATE_PATH)
+    : resolve(process.cwd(), 'state.json');
+}
 
 const defaultState: ResolverState = {
   lastRunAt: null,
@@ -16,9 +25,10 @@ const defaultState: ResolverState = {
 };
 
 export async function loadState(): Promise<ResolverState> {
+  const statePath = getStatePathFromEnv();
   try {
-    if (!existsSync(STATE_PATH)) return { ...defaultState };
-    const raw = await readFile(STATE_PATH, 'utf-8');
+    if (!existsSync(statePath)) return { ...defaultState };
+    const raw = await readFile(statePath, 'utf-8');
     const parsed = JSON.parse(raw) as Partial<ResolverState>;
     return {
       lastRunAt: parsed.lastRunAt ?? null,
@@ -34,27 +44,33 @@ export async function loadState(): Promise<ResolverState> {
 }
 
 export async function saveState(state: ResolverState): Promise<void> {
-  const tmpPath = `${STATE_PATH}.tmp`;
+  const statePath = getStatePathFromEnv();
+  const stateDir = dirname(statePath);
+  if (!existsSync(stateDir)) {
+    await mkdir(stateDir, { recursive: true });
+  }
+  const tmpPath = `${statePath}.tmp`;
   await writeFile(tmpPath, JSON.stringify(state, null, 2), 'utf-8');
-  renameSync(tmpPath, STATE_PATH);
+  renameSync(tmpPath, statePath);
   logger.debug('State saved');
 }
 
 export async function persistRunArtifact(artifact: ResolverRunArtifact): Promise<string> {
-  if (!existsSync(RUNS_DIR)) {
-    await mkdir(RUNS_DIR, { recursive: true });
+  const runsDir = getRunsDirFromEnv();
+  if (!existsSync(runsDir)) {
+    await mkdir(runsDir, { recursive: true });
   }
   const filename = `RESOLVE-${artifact.runId}.json`;
-  const path = resolve(RUNS_DIR, filename);
+  const path = resolve(runsDir, filename);
   await writeFile(path, JSON.stringify(artifact, null, 2), 'utf-8');
   logger.info({ path, runId: artifact.runId }, 'Run artifact persisted');
   return path;
 }
 
 export function getRunsDir(): string {
-  return RUNS_DIR;
+  return getRunsDirFromEnv();
 }
 
 export function getStatePath(): string {
-  return STATE_PATH;
+  return getStatePathFromEnv();
 }

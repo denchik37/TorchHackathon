@@ -1,7 +1,7 @@
 import { parseUnits } from 'ethers';
 import { getEnv } from '../config/env.js';
 import { logger } from '../logger.js';
-import type { UnresolvedWork, PriceCheckResult, ResolverRunArtifact, ResolverState } from '../types.js';
+import type { PriceCheckResult, ResolverRunArtifact } from '../types.js';
 import { fetchUnresolvedBets } from '../subgraph/client.js';
 import { fetchPriceAtTimestamp } from '../prices/coingecko.js';
 import { fetchOraclePrice } from '../prices/oracle.js';
@@ -52,8 +52,12 @@ export async function runResolveOnce(): Promise<ResolverRunArtifact> {
       uniqueTimestamps: work.timestampsToBets.size,
     };
 
-    const allTimestamps = Array.from(work.timestampsToBets.keys()).sort((a, b) => a - b);
+    const state = await loadState();
+    let stateDirty = false;
+    let newCacheCount = 0;
 
+    const allTimestamps = Array.from(work.timestampsToBets.keys()).sort((a, b) => a - b);
+    const eligibilityPool: number[] = [];
     for (const ts of allTimestamps) {
       if (ts > cutoffEligible) {
         skippedTooSoon.push(ts);
@@ -67,16 +71,15 @@ export async function runResolveOnce(): Promise<ResolverRunArtifact> {
         skippedTooOld.push(ts);
         continue;
       }
-      eligibleTimestamps.push(ts);
+      eligibilityPool.push(ts);
     }
 
+    const unresolvedEligible = eligibilityPool.filter(
+      (ts) => !state.resolvedTimestamps[String(ts)]
+    );
     const maxTsPerRun =
       env.MAX_TIMESTAMPS_PER_TX * MAX_TIMESTAMPS_PER_RUN_MULTIPLIER;
-    eligibleTimestamps = eligibleTimestamps.slice(0, maxTsPerRun);
-
-    const state = await loadState();
-    let stateDirty = false;
-    let newCacheCount = 0;
+    eligibleTimestamps = unresolvedEligible.slice(0, maxTsPerRun);
     const acceptedTimestamps: number[] = [];
     const acceptedPrices8dp: bigint[] = [];
     const acceptedPriceByTs = new Map<number, number>();
@@ -176,7 +179,7 @@ export async function runResolveOnce(): Promise<ResolverRunArtifact> {
         oraclePrice,
         divergencePct,
         status,
-        reason,
+        ...(reason !== undefined && { reason }),
       });
 
       if (status === 'accepted' && cgPrice != null) {
@@ -187,6 +190,7 @@ export async function runResolveOnce(): Promise<ResolverRunArtifact> {
     }
 
     state.lastRunAt = timestampUtc;
+    stateDirty = true;
 
     if (!env.DRY_RUN && (acceptedTimestamps.length > 0 || work.bucketsById.size > 0)) {
       const client = createHederaClient();
@@ -199,8 +203,13 @@ export async function runResolveOnce(): Promise<ResolverRunArtifact> {
           const { txId } = await setPricesForTimestamps(client, tsBatch, priceBatch);
           setPricesBatchTxIds.push(txId);
           for (let j = 0; j < tsBatch.length; j++) {
-            state.resolvedTimestamps[String(tsBatch[j])] = txId;
+            const key = String(tsBatch[j]);
+            state.resolvedTimestamps[key] = txId;
+            if (state.blockedTimestamps[key] != null) {
+              delete state.blockedTimestamps[key];
+            }
           }
+          stateDirty = true;
         }
       }
 
@@ -280,8 +289,8 @@ export async function runResolveOnce(): Promise<ResolverRunArtifact> {
             bucketErrors.push({
               bucketId,
               txId: res.txId,
-              status: res.status,
-              errorMessage: res.errorMessage,
+              ...(res.status !== undefined && { status: res.status }),
+              ...(res.errorMessage !== undefined && { errorMessage: res.errorMessage }),
             });
             logger.error(
               {
@@ -309,8 +318,8 @@ export async function runResolveOnce(): Promise<ResolverRunArtifact> {
           bucketId,
           processedTxCount: txIds.length,
           completed,
-          nextProcessIndex,
-          totalBets,
+          ...(nextProcessIndex !== undefined && { nextProcessIndex }),
+          ...(totalBets !== undefined && { totalBets }),
         });
         processBatchTxIds.push({ bucketId, txIds });
       }
@@ -326,7 +335,10 @@ export async function runResolveOnce(): Promise<ResolverRunArtifact> {
     }
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
-    errors.push({ message: err.message, stack: err.stack });
+    errors.push({
+      message: err.message,
+      ...(err.stack !== undefined && { stack: err.stack }),
+    });
     logger.error({ err }, 'Resolver run error');
   }
 
