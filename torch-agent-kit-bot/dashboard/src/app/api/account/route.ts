@@ -118,9 +118,9 @@ export async function GET() {
     let nextUrl: string | null = `${base}/api/v1/transactions?account.id=${encodedAccountId}&limit=${PAGE_LIMIT}&order=desc`;
 
     for (let page = 0; page < MAX_TX_PAGES && nextUrl; page++) {
-      const txRes = await fetch(nextUrl, { next: { revalidate: 30 } });
-      const txPayload = txRes.ok
-        ? ((await txRes.json()) as MirrorTransactionsResponse)
+      const txResponse: Response = await fetch(nextUrl, { next: { revalidate: 30 } });
+      const txPayload: MirrorTransactionsResponse = txResponse.ok
+        ? ((await txResponse.json()) as MirrorTransactionsResponse)
         : { transactions: [], links: {} };
       const batch = txPayload.transactions ?? [];
       for (const tx of batch) allTx.push(tx);
