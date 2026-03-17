@@ -8,7 +8,6 @@ import {
   Clock,
   ReceiptText,
   RefreshCw,
-  Server,
   Wallet,
 } from "lucide-react";
 import { dashboardStyles } from "@/components/layout/DashboardStyles";
@@ -57,8 +56,13 @@ function formatTimestamp(timestamp?: string | null): string {
   const date = hederaTimestampToDate(timestamp);
   if (!date) return "—";
   return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "medium",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
   }).format(date);
 }
 
@@ -110,21 +114,17 @@ type StatCardProps = {
   icon: React.ReactNode;
   label: string;
   value: string;
-  subtext?: string;
 };
 
-function StatCard({ icon, label, value, subtext }: StatCardProps) {
+function StatCard({ icon, label, value }: StatCardProps) {
   return (
-    <div className={cn(dashboardStyles.card, dashboardStyles.cardPadding, "flex items-start gap-4")}>
+    <div className={cn(dashboardStyles.card, dashboardStyles.cardPadding, "flex items-center gap-4")}>
       <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
         {icon}
       </div>
       <div className="min-w-0">
         <div className={dashboardStyles.kpiLabel}>{label}</div>
         <div className={dashboardStyles.kpiValue + " break-words"}>{value}</div>
-        {subtext ? (
-          <div className="text-sm text-muted-foreground mt-1 break-words">{subtext}</div>
-        ) : null}
       </div>
     </div>
   );
@@ -170,22 +170,17 @@ export default function AccountPage() {
     <div className={dashboardStyles.page}>
       <header className={dashboardStyles.pageHeader}>
         <div>
-          <h1 className={dashboardStyles.pageTitle}>Bot Account</h1>
+          <h1 className={dashboardStyles.pageTitle}>Account</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Hedera account state, balance, and latest transactions.
+            Torch bot account and transactions (Mirror Node).
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          {data?.network ? (
-            <span className={cn(dashboardStyles.badge, getNetworkBadgeClass(data.network))}>
-              {data.network}
-            </span>
-          ) : null}
           <button
             type="button"
             onClick={() => void loadData(true)}
             disabled={refreshing}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border border-border bg-card/60 backdrop-blur-sm text-foreground hover:bg-muted/40 hover:border-primary/30 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
           >
             <RefreshCw
               size={16}
@@ -214,36 +209,24 @@ export default function AccountPage() {
 
       {data ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <StatCard
               icon={<Wallet className="w-5 h-5" />}
               label="Balance"
-              value={`${formatHbar(data.balance.hbar)} ℏ`}
-              subtext={`${data.balance.tinybar} tinybar`}
-            />
-            <StatCard
-              icon={<Server className="w-5 h-5" />}
-              label="Account"
-              value={truncateMiddle(data.account)}
-              subtext={
-                data.evmAddress
-                  ? `EVM: ${truncateMiddle(data.evmAddress)}`
-                  : "No EVM address"
-              }
+              value={`${formatHbar(data.balance.hbar)} HBAR`}
             />
             <StatCard
               icon={<ReceiptText className="w-5 h-5" />}
               label="Transactions"
               value={String(transactionCount)}
-              subtext="Latest 25 mirror-node records"
             />
           </div>
 
-          <div className={dashboardStyles.card}>
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className={dashboardStyles.cardPadding + " border-b border-border"}>
-              <h2 className="text-base font-semibold text-foreground">Recent Transactions</h2>
+              <h2 className="text-base font-semibold text-foreground">Torch Bot Transactions</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Explorer links open directly on HashScan.
+                Transactions to the contract (Mirror Node). Links open on HashScan.
               </p>
             </div>
             <div className="overflow-x-auto">

@@ -35,6 +35,7 @@ type MirrorTransaction = {
 
 type MirrorTransactionsResponse = {
   transactions?: MirrorTransaction[];
+  links?: { next?: string | null };
 };
 
 function normalizeNetwork(network?: string): SupportedNetwork {
@@ -93,17 +94,9 @@ export async function GET() {
   try {
     const encodedAccountId = encodeURIComponent(accountId);
 
-    const [accountRes, txRes] = await Promise.all([
-      fetch(`${base}/api/v1/accounts/${encodedAccountId}`, {
-        next: { revalidate: 30 },
-      }),
-      fetch(
-        `${base}/api/v1/transactions?account.id=${encodedAccountId}&limit=25&order=desc`,
-        {
-          next: { revalidate: 30 },
-        }
-      ),
-    ]);
+    const accountRes = await fetch(`${base}/api/v1/accounts/${encodedAccountId}`, {
+      next: { revalidate: 30 },
+    });
 
     if (!accountRes.ok) {
       const detail = await accountRes.text();
@@ -117,14 +110,30 @@ export async function GET() {
     }
 
     const account = (await accountRes.json()) as MirrorAccountResponse;
-    const txPayload = txRes.ok
-      ? ((await txRes.json()) as MirrorTransactionsResponse)
-      : { transactions: [] };
-
     const balanceTinybar = getBalanceTinybar(account);
-    const transactions = (txPayload.transactions ?? []).map((tx) =>
-      normalizeTransaction(tx, network)
-    );
+
+    const MAX_TX_PAGES = 50;
+    const PAGE_LIMIT = 100;
+    const allTx: MirrorTransaction[] = [];
+    let nextUrl: string | null = `${base}/api/v1/transactions?account.id=${encodedAccountId}&limit=${PAGE_LIMIT}&order=desc`;
+
+    for (let page = 0; page < MAX_TX_PAGES && nextUrl; page++) {
+      const txRes = await fetch(nextUrl, { next: { revalidate: 30 } });
+      const txPayload = txRes.ok
+        ? ((await txRes.json()) as MirrorTransactionsResponse)
+        : { transactions: [], links: {} };
+      const batch = txPayload.transactions ?? [];
+      for (const tx of batch) allTx.push(tx);
+      const nextLink = txPayload.links?.next;
+      nextUrl =
+        nextLink && batch.length === PAGE_LIMIT
+          ? nextLink.startsWith("http")
+            ? nextLink
+            : `${base}${nextLink.startsWith("/") ? "" : "/"}${nextLink}`
+          : null;
+    }
+
+    const transactions = allTx.map((tx) => normalizeTransaction(tx, network));
 
     return NextResponse.json({
       accountId,

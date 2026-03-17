@@ -21,7 +21,7 @@ interface RunSummary {
 export default function RunsListPage() {
   const [runs, setRuns] = useState<RunSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "success" | "failed" | "dry">("all");
+  const [filter, setFilter] = useState<"all" | "success" | "failed">("all");
 
   useEffect(() => {
     fetch("/api/betting/runs")
@@ -34,7 +34,6 @@ export default function RunsListPage() {
   const filtered = runs.filter((r) => {
     if (filter === "success") return r.successCount > 0;
     if (filter === "failed") return r.failedCount > 0;
-    if (filter === "dry") return r.dryRunCount > 0;
     return true;
   });
 
@@ -55,7 +54,6 @@ export default function RunsListPage() {
     { key: "all", label: "All" },
     { key: "success", label: "Success" },
     { key: "failed", label: "Failed" },
-    { key: "dry", label: "Dry run" },
   ];
 
   return (
@@ -92,7 +90,7 @@ export default function RunsListPage() {
                 <th className={dashboardStyles.tableTh}>Run ID</th>
                 <th className={dashboardStyles.tableTh}>Time (UTC)</th>
                 <th className={dashboardStyles.tableTh}>Forecasts</th>
-                <th className={dashboardStyles.tableTh}>Tx / Dry / Failed</th>
+                <th className={dashboardStyles.tableTh}>Tx / Failed</th>
                 <th className={dashboardStyles.tableTh}></th>
               </tr>
             </thead>
@@ -109,8 +107,6 @@ export default function RunsListPage() {
                   <td className={dashboardStyles.tableTd}>{r.forecastCount}</td>
                   <td className={dashboardStyles.tableTd}>
                     <span className="text-destructive">{r.successCount}</span>
-                    {" / "}
-                    <span className="text-primary">{r.dryRunCount}</span>
                     {" / "}
                     <span className="text-magenta">{r.failedCount}</span>
                   </td>

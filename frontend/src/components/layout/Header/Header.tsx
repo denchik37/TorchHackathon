@@ -15,6 +15,12 @@ import { WalletSelector } from '@/components/features/wallet';
 import { useWallet, useBalance, useAccountId } from '@buidlerlabs/hashgraph-react-wallets';
 import { headerStyles } from './Header.styles';
 
+const SITE_LINKS = [
+  { label: 'Website', href: 'https://torch.bet/', external: true },
+  { label: 'Oracle', href: '/oracle', external: false },
+  { label: 'Bot', href: 'https://torch-agent.vercel.app/', external: true },
+] as const;
+
 export function Header() {
   const { isConnected, disconnect } = useWallet();
   const { data: balanceData, isLoading: balanceLoading } = useBalance({ autoFetch: isConnected });
@@ -55,18 +61,45 @@ export function Header() {
             <Image src="/logo.svg" alt="Logo" width={40} height={40} />
             <span className={headerStyles.logoText}>Torch</span>
           </Link>
-          <Button asChild size="sm" variant="link" className={headerStyles.navLink}>
-            <a href="https://torch.bet/" target="_blank" rel="noopener noreferrer">
-              Website
-              <ExternalLink className="w-3.5 h-3.5 ml-1 opacity-70" />
-            </a>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className={headerStyles.navLink + ' flex items-center gap-1.5 outline-none focus:ring-0'}
+                aria-label="Open menu"
+              >
+                <span>Links</span>
+                <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className={headerStyles.dropdownContent}>
+              {SITE_LINKS.map((item) =>
+                item.external ? (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2.5 text-sm text-foreground hover:bg-muted/40 outline-none rounded-md"
+                  >
+                    {item.label}
+                    <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+                  </a>
+                ) : (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="flex items-center gap-2 px-3 py-2.5 text-sm text-foreground hover:bg-muted/40 outline-none rounded-md"
+                  >
+                    {item.label}
+                  </Link>
+                )
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className={headerStyles.right}>
-          <Link href="/oracle" className={headerStyles.navLink + ' flex items-center gap-2 text-sm font-medium'}>
-            <span className="hidden sm:inline">Oracle</span>
-          </Link>
           <Link href="/my-bets" className={headerStyles.navLink + ' flex items-center gap-2 text-sm font-medium'}>
             <Wallet className="w-3.5 h-3.5 opacity-70" />
             <span className="hidden sm:inline">My bets</span>

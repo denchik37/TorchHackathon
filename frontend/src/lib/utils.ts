@@ -37,6 +37,23 @@ export function formatDateUTC(date: number): string {
   return new Date(date * 1000).toLocaleString('en-US', options);
 }
 
+/** Parse resolver runId (e.g. RESOLVE-2025-03-16T12-30-00) to a formatted date/time string. */
+export function formatResolverRunIdToDate(runId: string): string {
+  const raw = runId.replace(/^RESOLVE-/, '').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
+  const date = new Date(raw.endsWith('Z') ? raw : `${raw}Z`);
+  if (!Number.isFinite(date.getTime())) return runId;
+  return date.toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZone: 'UTC',
+  }) + ' UTC';
+}
+
 export function formatTinybarsToHbar(tinybars: number | string, fractionDigits = 6) {
   const hbar = Number(tinybars) / 100000000;
   return hbar.toFixed(fractionDigits);

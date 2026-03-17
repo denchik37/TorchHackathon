@@ -50,7 +50,7 @@ export default function OpenGraphImage() {
               letterSpacing: "-0.02em",
             }}
           >
-            Bot
+            Torch Bot
           </span>
         </div>
         <p
@@ -63,8 +63,8 @@ export default function OpenGraphImage() {
             lineHeight: 1.4,
           }}
         >
-          Dashboard for daily runs, forecasts, and on-chain account data. Torch
-          prediction bot on Hedera.
+          Monitor daily runs, forecasts, bet results, and on-chain account data.
+          AI-driven HBAR price predictions on Hedera.
         </p>
         <div
           style={{
@@ -78,7 +78,7 @@ export default function OpenGraphImage() {
             fontWeight: 600,
           }}
         >
-          Torch Bot Dashboard
+          torch-agent.vercel.app
         </div>
       </div>
     ),

@@ -2,18 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 import { format } from "date-fns";
+import { Copy, Check, ExternalLink, Coins } from "lucide-react";
 import { dashboardStyles } from "@/components/layout/DashboardStyles";
 
 interface Health {
@@ -80,11 +70,30 @@ function normalizeHealth(raw: unknown): Health | null {
   return null;
 }
 
+function formatDateTimeUtc(isoOrTimestamp: string | number): string {
+  try {
+    const date = typeof isoOrTimestamp === "number"
+      ? new Date(isoOrTimestamp * 1000)
+      : new Date(isoOrTimestamp);
+    if (!Number.isFinite(date.getTime())) return "—";
+    return format(date, "dd MMM yyyy, HH:mm") + " UTC";
+  } catch {
+    return "—";
+  }
+}
+
+const HASHSCAN_NETWORK: Record<string, string> = {
+  mainnet: "mainnet",
+  testnet: "testnet",
+  previewnet: "previewnet",
+};
+
 export default function OverviewPage() {
   const [health, setHealth] = useState<Health | null>(null);
   const [runs, setRuns] = useState<RunSummary[]>([]);
   const [account, setAccount] = useState<AccountSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -101,13 +110,25 @@ export default function OverviewPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleCopyAccount = async () => {
+    if (account?.accountId) {
+      await navigator.clipboard.writeText(account.accountId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const hashscanUrl = account?.accountId && account?.network
+    ? `https://hashscan.io/${HASHSCAN_NETWORK[account.network] ?? "testnet"}/account/${account.accountId}`
+    : null;
+
   if (loading) {
     return (
       <div className={dashboardStyles.page}>
         <div className="h-8 w-48 rounded bg-card animate-pulse" />
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className={`${dashboardStyles.kpiCard} h-24 animate-pulse`} />
+            <div key={i} className={`${dashboardStyles.kpiCard} h-24 animate-pulse rounded-xl border border-border`} />
           ))}
         </div>
       </div>
@@ -115,96 +136,75 @@ export default function OverviewPage() {
   }
 
   const lastRun = health?.lastRun;
-  const successRateData =
-    runs.length > 0
-      ? runs.slice(0, 7).reverse().map((r) => ({
-          date: r.date.slice(5),
-          rate: r.resultCount > 0 ? Math.round((r.successCount / r.resultCount) * 100) : 0,
-        }))
-      : [];
-  const stakeData =
-    runs.length > 0
-      ? runs.slice(0, 7).reverse().map((r) => ({
-          date: r.date.slice(5),
-          count: r.successCount + r.dryRunCount,
-        }))
-      : [];
-
-  const chartGrid = "hsl(var(--border))";
-  const chartText = "hsl(var(--muted-foreground))";
-  const chartPrimary = "hsl(var(--primary))";
-  const tooltipBg = "hsl(var(--card))";
-  const tooltipBorder = "hsl(var(--border))";
+  const attempted = lastRun ? lastRun.successCount + lastRun.dryRunCount + lastRun.skippedCount : 0;
+  const succeeded = lastRun?.successCount ?? 0;
 
   return (
     <div className={dashboardStyles.page}>
       <header className={dashboardStyles.pageHeader}>
         <h1 className={dashboardStyles.pageTitle}>Overview</h1>
-        <div className="flex items-center gap-3 text-sm">
-          <span className={dashboardStyles.badge + " " + dashboardStyles.badgeMuted}>
-            runs/
-          </span>
-          {lastRun && (
-            <span className={dashboardStyles.badge + " " + dashboardStyles.badgePrimary}>
-              Last: {format(new Date(lastRun.timestampUtc), "MMM d, HH:mm")} UTC
-            </span>
-          )}
-        </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className={dashboardStyles.kpiCard}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
           <p className={dashboardStyles.kpiLabel}>Last run</p>
           <p className={dashboardStyles.kpiValue}>
-            {lastRun
-              ? format(new Date(lastRun.timestampUtc), "MMM d, yyyy HH:mm") + " UTC"
-              : "—"}
+            {lastRun ? formatDateTimeUtc(lastRun.timestampUtc) : "—"}
           </p>
           <p className={dashboardStyles.kpiSub}>
             {lastRun ? `${lastRun.successCount} ok, ${lastRun.failedCount} failed` : "No runs yet"}
           </p>
         </div>
-        <div className={dashboardStyles.kpiCard}>
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
           <p className={dashboardStyles.kpiLabel}>Bets attempted / succeeded</p>
           <p className={dashboardStyles.kpiValue}>
-            {lastRun
-              ? `${lastRun.successCount + lastRun.dryRunCount + lastRun.skippedCount} / ${lastRun.successCount}`
-              : "—"}
+            {lastRun ? `${attempted} / ${succeeded}` : "—"}
           </p>
         </div>
-        <div className={dashboardStyles.kpiCard}>
-          <p className={dashboardStyles.kpiLabel}>DRY_RUN</p>
-          <p className="mt-1 text-lg font-semibold text-primary">
-            {lastRun?.dryRunCount ? `${lastRun.dryRunCount} dry-run` : "—"}
-          </p>
-        </div>
-        <div className={dashboardStyles.kpiCard}>
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
           <p className={dashboardStyles.kpiLabel}>Next target (12:00 UTC)</p>
           <p className={dashboardStyles.kpiValue}>
             {health?.nextTargetDate
-              ? format(new Date(health.nextTargetDate), "MMM d, yyyy HH:mm") + " UTC"
+              ? formatDateTimeUtc(health.nextTargetDate)
               : "—"}
           </p>
         </div>
       </div>
 
       {account && (
-        <div className={`${dashboardStyles.card} ${dashboardStyles.cardPadding} mb-8`}>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <h2 className={dashboardStyles.kpiLabel}>Bot account (on-chain)</h2>
-              <p className="mt-1 font-mono text-sm text-foreground">{account.accountId}</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">
-                {Number(account.balance?.hbar ?? 0).toFixed(4)} HBAR
-                <span className="text-muted-foreground font-normal text-sm ml-2">{account.network}</span>
-              </p>
-            </div>
-            <Link
-              href="/account"
-              className="text-sm font-medium text-primary hover:underline"
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-5 mb-8">
+          <h2 className={dashboardStyles.kpiLabel}>Torch Bot</h2>
+          <div className="mt-3 flex items-center gap-2">
+            <Coins className="w-5 h-5 text-primary flex-shrink-0" />
+            <span className="text-xl font-semibold text-foreground tabular-nums">
+              {Number(account.balance?.hbar ?? 0).toLocaleString("en-GB", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 8,
+              })}{" "}
+              HBAR
+            </span>
+          </div>
+          <div className="mt-4 flex items-center gap-2 flex-wrap">
+            <span className="font-mono text-sm text-foreground">{account.accountId}</span>
+            <button
+              type="button"
+              onClick={handleCopyAccount}
+              className="p-2 rounded-lg text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
+              aria-label={copied ? "Copied" : "Copy address"}
             >
-              View account →
-            </Link>
+              {copied ? <Check className="w-4 h-4 text-primary" /> : <Copy className="w-4 h-4" />}
+            </button>
+            {hashscanUrl && (
+              <a
+                href={hashscanUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
+                aria-label="View on HashScan"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            )}
           </div>
         </div>
       )}
@@ -212,49 +212,15 @@ export default function OverviewPage() {
       {runs.length === 0 ? (
         <div className={dashboardStyles.emptyState}>
           No runs yet — run the bot first (e.g.{" "}
-          <code className="bg-card px-2 py-1 rounded border border-border font-mono text-xs">DRY_RUN=true npm run daily</code>).
+          <code className="bg-card px-2 py-1 rounded border border-border font-mono text-xs">npm run daily</code>).
         </div>
       ) : (
-        <>
-          <div className={`${dashboardStyles.card} ${dashboardStyles.cardPadding} mb-6`}>
-            <h2 className={dashboardStyles.kpiLabel + " mb-4"}>7-day success rate trend</h2>
-            <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={successRateData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
-                  <XAxis dataKey="date" stroke={chartText} fontSize={12} />
-                  <YAxis stroke={chartText} fontSize={12} domain={[0, 100]} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${tooltipBorder}` }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="rate"
-                    stroke={chartPrimary}
-                    strokeWidth={2}
-                    name="Success %"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-          <div className={`${dashboardStyles.card} ${dashboardStyles.cardPadding}`}>
-            <h2 className={dashboardStyles.kpiLabel + " mb-4"}>Stake volume per day (count)</h2>
-            <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stakeData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
-                  <XAxis dataKey="date" stroke={chartText} fontSize={12} />
-                  <YAxis stroke={chartText} fontSize={12} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${tooltipBorder}` }}
-                  />
-                  <Bar dataKey="count" fill={chartPrimary} name="Bets" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </>
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+          <h2 className={dashboardStyles.kpiLabel + " mb-4"}>Recent runs</h2>
+          <p className="text-sm text-muted-foreground">
+            View full history in the <Link href="/runs" className="text-primary hover:underline">Runs</Link> tab.
+          </p>
+        </div>
       )}
     </div>
   );
