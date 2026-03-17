@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { format } from "date-fns";
+import { Copy, FileText, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { dashboardStyles } from "@/components/layout/DashboardStyles";
 
@@ -45,8 +46,14 @@ interface RunArtifact {
 
 type Tab = "forecasts" | "bets" | "transactions" | "logs";
 
-function copyToClipboard(text: string) {
-  navigator.clipboard.writeText(text);
+function useCopyFeedback() {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const copy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+  return { copy, copiedId };
 }
 
 export default function RunDetailPage() {
@@ -55,6 +62,7 @@ export default function RunDetailPage() {
   const [artifact, setArtifact] = useState<RunArtifact | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("forecasts");
+  const { copy, copiedId } = useCopyFeedback();
 
   useEffect(() => {
     if (!date) return;
@@ -72,7 +80,7 @@ export default function RunDetailPage() {
     return (
       <div className={dashboardStyles.pageNarrow}>
         <div className="h-8 w-48 rounded bg-card animate-pulse" />
-        <div className="mt-6 h-64 rounded-xl glass-card animate-pulse" />
+        <div className="mt-6 h-64 rounded-xl border border-border bg-card animate-pulse" />
       </div>
     );
   }
@@ -95,7 +103,7 @@ export default function RunDetailPage() {
     { id: "logs", label: "Logs" },
   ];
 
-  const tabPanelClass = `${dashboardStyles.card} ${dashboardStyles.cardPadding}`;
+  const tabPanelClass = "rounded-xl border border-border bg-card overflow-hidden";
 
   return (
     <div className={dashboardStyles.pageNarrow}>
@@ -131,34 +139,62 @@ export default function RunDetailPage() {
         <div className="space-y-4">
           {artifact.forecasts.map((f) => (
             <div key={f.betKey} className={tabPanelClass}>
-              <div className="flex justify-between items-start gap-2">
-                <span className="font-mono text-primary text-sm">{f.betKey}</span>
-                <span className="text-muted-foreground text-sm">{f.monthDay}</span>
-              </div>
-              <p className="text-muted-foreground text-sm mt-2 line-clamp-2">{f.prompt}</p>
-              <p className="text-foreground font-mono text-sm mt-2 bg-background/80 p-2 rounded-lg border border-border">
-                {f.raw}
-              </p>
-              <div className="flex flex-wrap gap-4 mt-2 text-sm">
-                <span className="text-destructive">Min: {f.minStr}</span>
-                <span className="text-torch-orange">Max: {f.maxStr}</span>
-                <button
-                  onClick={() => copyToClipboard(f.prompt)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  Copy prompt
-                </button>
-                <button
-                  onClick={() => copyToClipboard(f.raw)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  Copy raw
-                </button>
-              </div>
-              <div className="mt-3 h-2 bg-card rounded overflow-hidden flex border border-border">
-                <div className="bg-primary/30" style={{ width: "30%" }} />
-                <div className="bg-primary" style={{ width: "40%" }} />
-                <div className="bg-primary/30" style={{ width: "30%" }} />
+              <div className="p-4 sm:p-5">
+                <div className="flex justify-between items-start gap-3">
+                  <div>
+                    <span className="font-mono text-sm font-medium text-primary">{f.betKey}</span>
+                    <span className="text-muted-foreground text-sm ml-2">{f.monthDay}</span>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => copy(f.prompt, `prompt-${f.betKey}`)}
+                      className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                      title="Copy prompt"
+                      aria-label="Copy prompt"
+                    >
+                      {copiedId === `prompt-${f.betKey}` ? (
+                        <Check className="w-4 h-4 text-primary" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => copy(f.raw, `raw-${f.betKey}`)}
+                      className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                      title="Copy raw"
+                      aria-label="Copy raw"
+                    >
+                      {copiedId === `raw-${f.betKey}` ? (
+                        <Check className="w-4 h-4 text-primary" />
+                      ) : (
+                        <FileText className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Prompt</p>
+                    <p className="text-sm text-foreground mt-1 line-clamp-3">{f.prompt}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Model output</p>
+                    <p className="text-sm font-mono text-foreground mt-1 bg-muted/30 p-3 rounded-lg border border-border break-words">
+                      {f.raw}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-4 pt-2 border-t border-border">
+                    <span className="text-sm"><span className="text-muted-foreground">Min:</span> <span className="font-medium text-foreground">{f.minStr}</span></span>
+                    <span className="text-sm"><span className="text-muted-foreground">Max:</span> <span className="font-medium text-foreground">{f.maxStr}</span></span>
+                  </div>
+                </div>
+                <div className="mt-4 h-1.5 bg-muted/50 rounded-full overflow-hidden flex">
+                  <div className="bg-primary/40 rounded-l-full" style={{ width: "30%" }} />
+                  <div className="bg-primary rounded-none" style={{ width: "40%" }} />
+                  <div className="bg-primary/40 rounded-r-full" style={{ width: "30%" }} />
+                </div>
               </div>
             </div>
           ))}
@@ -169,27 +205,23 @@ export default function RunDetailPage() {
         <div className="space-y-4">
           {artifact.betParams.map((b) => (
             <div key={b.betKey} className={tabPanelClass}>
-              <p className="font-mono text-primary text-sm">{b.betKey}</p>
-              <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Min (str): </span>
-                  <span className="text-foreground">{b.priceMinStr}</span>
+              <div className="p-4 sm:p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="font-mono text-sm font-semibold text-primary">{b.betKey}</span>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Max (str): </span>
-                  <span className="text-foreground">{b.priceMaxStr}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Min (int): </span>
-                  <span className="font-mono text-foreground">{b.priceMinInt}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Max (int): </span>
-                  <span className="font-mono text-foreground">{b.priceMaxInt}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Stake: </span>
-                  <span className="text-foreground">{b.stakeHbar} HBAR</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="rounded-lg border border-border bg-muted/20 p-3">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Price range (display)</p>
+                    <p className="text-sm font-medium text-foreground mt-1">{b.priceMinStr} – {b.priceMaxStr}</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/20 p-3">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Price range (int)</p>
+                    <p className="text-sm font-mono text-foreground mt-1">{b.priceMinInt} – {b.priceMaxInt}</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-primary/10 p-3">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Stake</p>
+                    <p className="text-sm font-semibold text-foreground mt-1">{b.stakeHbar} HBAR</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -200,42 +232,41 @@ export default function RunDetailPage() {
       {tab === "transactions" && (
         <div className="space-y-4">
           {artifact.results
-            .filter((r) => r.txId || r.dryRun || r.skippedDuplicate)
+            .filter((r) => r.txId || r.skippedDuplicate)
             .map((r, i) => (
               <div key={r.betKey + String(i)} className={tabPanelClass}>
-                <div className="flex justify-between items-center flex-wrap gap-2">
-                  <span className="font-mono text-sm text-foreground">{r.betKey}</span>
-                  <span>
-                    {r.dryRun && (
-                      <span className={dashboardStyles.badge + " " + dashboardStyles.badgePrimary}>
-                        Dry run
-                      </span>
-                    )}
-                    {r.skippedDuplicate && (
-                      <span className={dashboardStyles.badge + " " + dashboardStyles.badgeWarning + " ml-1"}>
-                        Skipped
-                      </span>
-                    )}
-                    {r.txId && (
-                      <span className={dashboardStyles.badge + " " + dashboardStyles.badgeSuccess + " ml-1"}>
-                        {r.status === 22 ? "Success" : `Status ${r.status}`}
-                      </span>
-                    )}
-                  </span>
-                </div>
-                {r.txId && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <code className="text-xs text-muted-foreground font-mono truncate max-w-md">
-                      {r.txId}
-                    </code>
-                    <button
-                      onClick={() => copyToClipboard(r.txId!)}
-                      className="text-muted-foreground hover:text-foreground text-xs font-medium"
-                    >
-                      Copy
-                    </button>
+                <div className="p-4 sm:p-5">
+                  <div className="flex justify-between items-start gap-3 flex-wrap">
+                    <span className="font-mono text-sm font-medium text-foreground">{r.betKey}</span>
+                    <div className="flex flex-wrap gap-2">
+                      {r.skippedDuplicate && (
+                        <span className={dashboardStyles.badge + " " + dashboardStyles.badgeWarning}>
+                          Skipped
+                        </span>
+                      )}
+                      {r.txId && (
+                        <span className={dashboardStyles.badge + " " + dashboardStyles.badgeSuccess}>
+                          {r.status === 22 ? "Success" : `Status ${r.status}`}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                )}
+                  {r.txId && (
+                    <div className="mt-3 flex items-center gap-2 flex-wrap">
+                      <code className="text-xs font-mono text-muted-foreground truncate max-w-full sm:max-w-md bg-muted/30 px-2 py-1.5 rounded border border-border">
+                        {r.txId}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => copy(r.txId!, `tx-${r.betKey}-${i}`)}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                      >
+                        {copiedId === `tx-${r.betKey}-${i}` ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedId === `tx-${r.betKey}-${i}` ? "Copied" : "Copy"}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
         </div>
@@ -250,13 +281,15 @@ export default function RunDetailPage() {
               .filter((r) => r.error || r.skippedDuplicate)
               .map((r, i) => (
                 <div key={r.betKey + String(i)} className={tabPanelClass}>
-                  <p className="font-mono text-sm text-foreground">{r.betKey}</p>
-                  {r.skippedDuplicate && (
-                    <p className="text-torch-orange text-sm mt-1">Skipped (duplicate)</p>
-                  )}
-                  {r.error && (
-                    <p className="text-magenta text-sm mt-1">{r.error}</p>
-                  )}
+                  <div className="p-4 sm:p-5">
+                    <p className="font-mono text-sm font-medium text-foreground">{r.betKey}</p>
+                    {r.skippedDuplicate && (
+                      <p className="text-torch-orange text-sm mt-2">Skipped (duplicate)</p>
+                    )}
+                    {r.error && (
+                      <p className="text-magenta text-sm mt-2 font-mono break-words">{r.error}</p>
+                    )}
+                  </div>
                 </div>
               ))
           )}

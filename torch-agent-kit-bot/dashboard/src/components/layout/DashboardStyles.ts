@@ -9,9 +9,9 @@ export const dashboardStyles = {
   pageHeader:
     "flex flex-wrap items-center justify-between gap-4 border-b border-border pb-6 mb-8",
   pageTitle: "text-xl font-semibold text-foreground",
-  card: "rounded-xl border border-white/10 glass-card overflow-hidden",
+  card: "rounded-xl border border-border bg-card overflow-hidden",
   cardPadding: "p-4 sm:p-5",
-  kpiCard: "rounded-xl border border-white/10 glass-card p-4 sm:p-5",
+  kpiCard: "rounded-xl border border-border bg-card p-4 sm:p-5",
   kpiLabel: "text-sm font-medium text-muted-foreground",
   kpiValue: "mt-1 text-lg font-semibold text-foreground",
   kpiSub: "text-xs text-muted-foreground mt-1",
@@ -25,7 +25,7 @@ export const dashboardStyles = {
   badgeSuccess: "bg-destructive/15 text-destructive",
   badgeWarning: "bg-torch-orange/20 text-torch-orange",
   badgeMuted: "bg-muted/20 text-muted-foreground",
-  emptyState: "rounded-xl border border-border glass-card p-12 text-center text-muted-foreground text-sm",
+  emptyState: "rounded-xl border border-border bg-card p-12 text-center text-muted-foreground text-sm",
   tabButton:
     "px-4 py-2 rounded-t-lg text-sm font-medium transition-colors border-b-2 -mb-px",
   tabActive: "border-primary text-foreground",
