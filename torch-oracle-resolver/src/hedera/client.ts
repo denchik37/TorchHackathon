@@ -167,8 +167,8 @@ export async function processBatch(
     return {
       ok: false,
       txId,
-      status: statusStr,
-      errorMessage,
+      ...(statusStr !== undefined && { status: statusStr }),
+      ...(errorMessage !== undefined && { errorMessage }),
     };
   }
 }
