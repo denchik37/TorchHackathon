@@ -1,18 +1,18 @@
 /**
  * Dashboard header styling primitives.
- * Mirrors frontend Header layout: same rhythm, spacing, and premium feel.
- * Identity: Icon + "Bot" (dashboard counterpart to Torch branding).
+ * Aligned with frontend: borders-only depth, no glassmorphism.
  */
 
 export const headerStyles = {
   root:
-    "border-b border-border bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 transition-colors",
+    "sticky top-0 z-50 border-b border-white/[0.08] bg-background",
   inner:
-    "container mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between max-w-[1600px]",
+    "mx-auto px-4 sm:px-6 h-12 flex items-center justify-between max-w-7xl",
   left: "flex items-center gap-6",
-  right: "flex items-center gap-6",
-  logoText: "text-xl font-bold text-foreground",
+  right: "flex items-center gap-1",
+  logoText: "text-sm font-semibold text-foreground",
   logoLink:
     "flex items-center gap-2 transition-opacity hover:opacity-90 focus:outline-none focus:ring-0 rounded-md",
-  navLink: "text-sm font-medium text-muted-foreground hover:text-foreground transition-colors",
+  navLink: "px-2.5 py-1 text-[13px] font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground",
+  navLinkActive: "text-foreground bg-[hsl(0_0%_11%)]",
 } as const;

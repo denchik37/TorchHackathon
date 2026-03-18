@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -81,7 +80,7 @@ function formatFee(value?: string | null): string {
   return `${new Intl.NumberFormat("en-GB", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 8,
-  }).format(hbar)} ℏ`;
+  }).format(hbar)} HBAR`;
 }
 
 function truncateMiddle(value?: string | null, start = 8, end = 6): string {
@@ -90,22 +89,11 @@ function truncateMiddle(value?: string | null, start = 8, end = 6): string {
   return `${value.slice(0, start)}...${value.slice(-end)}`;
 }
 
-function getNetworkBadgeClass(network?: string): string {
-  switch (network) {
-    case "mainnet":
-      return dashboardStyles.badgeSuccess;
-    case "previewnet":
-      return dashboardStyles.badgePrimary;
-    default:
-      return dashboardStyles.badgeWarning;
-  }
-}
-
 function getResultBadgeClass(result?: string): string {
   const normalized = (result ?? "").toUpperCase();
   if (normalized === "SUCCESS") return dashboardStyles.badgeSuccess;
   if (normalized.includes("FAIL") || normalized.includes("ERROR")) {
-    return "bg-magenta/15 text-magenta";
+    return "bg-red-500/10 text-red-400";
   }
   return dashboardStyles.badgeMuted;
 }
@@ -119,7 +107,7 @@ type StatCardProps = {
 function StatCard({ icon, label, value }: StatCardProps) {
   return (
     <div className={cn(dashboardStyles.card, dashboardStyles.cardPadding, "flex items-center gap-4")}>
-      <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+      <div className="flex size-11 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
         {icon}
       </div>
       <div className="min-w-0">
@@ -180,7 +168,7 @@ export default function AccountPage() {
             type="button"
             onClick={() => void loadData(true)}
             disabled={refreshing}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold bg-primary text-white hover:bg-primary/85 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
           >
             <RefreshCw
               size={16}
@@ -192,8 +180,8 @@ export default function AccountPage() {
       </header>
 
       {error ? (
-        <div className="flex gap-3 items-start p-4 rounded-xl border border-magenta/30 bg-magenta/10 mb-6">
-          <AlertTriangle className="w-5 h-5 text-magenta flex-shrink-0 mt-0.5" />
+        <div className="flex gap-3 items-start p-4 rounded-xl border border-red-500/20 bg-red-500/10 mb-6">
+          <AlertTriangle className="size-5 text-red-400 flex-shrink-0 mt-0.5" />
           <div>
             <div className="font-semibold text-foreground">Unable to load account data</div>
             <div className="text-sm text-muted-foreground mt-1">{error}</div>
@@ -203,7 +191,7 @@ export default function AccountPage() {
 
       {loading && !data ? (
         <div className={cn(dashboardStyles.card, "min-h-[180px] flex items-center justify-center")}>
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       ) : null}
 
@@ -211,19 +199,19 @@ export default function AccountPage() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <StatCard
-              icon={<Wallet className="w-5 h-5" />}
+              icon={<Wallet className="size-5" />}
               label="Balance"
               value={`${formatHbar(data.balance.hbar)} HBAR`}
             />
             <StatCard
-              icon={<ReceiptText className="w-5 h-5" />}
+              icon={<ReceiptText className="size-5" />}
               label="Transactions"
               value={String(transactionCount)}
             />
           </div>
 
-          <div className="rounded-xl border border-border bg-card overflow-hidden">
-            <div className={dashboardStyles.cardPadding + " border-b border-border"}>
+          <div className="rounded-xl border border-white/[0.08] bg-background overflow-hidden">
+            <div className={dashboardStyles.cardPadding + " border-b border-white/[0.08]"}>
               <h2 className="text-base font-semibold text-foreground">Torch Bot Transactions</h2>
               <p className="text-sm text-muted-foreground mt-1">
                 Transactions to the contract (Mirror Node). Links open on HashScan.
@@ -242,7 +230,7 @@ export default function AccountPage() {
                     <th className={dashboardStyles.tableTh}></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-white/[0.08]">
                   {data.transactions.length === 0 ? (
                     <tr>
                       <td
@@ -276,7 +264,7 @@ export default function AccountPage() {
                         </td>
                         <td className={dashboardStyles.tableTd}>
                           <div className="inline-flex items-center gap-2 text-muted-foreground">
-                            <Clock className="w-3.5 h-3.5" />
+                            <Clock className="size-3.5" />
                             <span>{formatTimestamp(tx.consensusTimestamp)}</span>
                           </div>
                         </td>
@@ -293,10 +281,10 @@ export default function AccountPage() {
                               href={tx.hashscanUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium border border-border bg-card/40 text-foreground hover:border-primary/30 hover:bg-primary/10 transition-colors"
+                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border border-white/[0.08] text-foreground hover:border-white/[0.12] hover:bg-white/[0.03] transition-colors"
                             >
                               <span>View</span>
-                              <ArrowUpRight className="w-3.5 h-3.5" />
+                              <ArrowUpRight className="size-3.5" />
                             </a>
                           ) : (
                             <span className="text-muted-foreground">—</span>

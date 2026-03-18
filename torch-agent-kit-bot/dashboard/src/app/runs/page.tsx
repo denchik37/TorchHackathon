@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { dashboardStyles } from "@/components/layout/DashboardStyles";
+import { cn } from "@/lib/utils";
 
 interface RunSummary {
   date: string;
@@ -40,10 +41,10 @@ export default function RunsListPage() {
   if (loading) {
     return (
       <div className={dashboardStyles.page}>
-        <div className="h-8 w-32 rounded bg-card animate-pulse mb-6" />
+        <div className="h-8 w-32 rounded bg-white/[0.06] animate-pulse mb-6" />
         <div className="space-y-2">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-14 rounded-xl glass-card animate-pulse" />
+            <div key={i} className="h-14 rounded-xl border border-white/[0.08] bg-white/[0.06] animate-pulse" />
           ))}
         </div>
       </div>
@@ -60,16 +61,17 @@ export default function RunsListPage() {
     <div className={dashboardStyles.page}>
       <header className={dashboardStyles.pageHeader}>
         <h1 className={dashboardStyles.pageTitle}>Runs</h1>
-        <div className="flex gap-2">
+        <div className="flex gap-1 rounded-lg bg-[hsl(0_0%_7%)] p-0.5 border border-white/[0.06]">
           {filterButtons.map(({ key, label }) => (
             <button
               key={key}
               onClick={() => setFilter(key)}
-              className={`${dashboardStyles.badge} transition-colors ${
+              className={cn(
+                dashboardStyles.tabButton,
                 filter === key
-                  ? dashboardStyles.badgePrimary
-                  : "bg-card border border-border text-muted-foreground hover:text-foreground hover:border-white/15"
-              }`}
+                  ? dashboardStyles.tabActive
+                  : dashboardStyles.tabInactive
+              )}
             >
               {label}
             </button>
@@ -94,7 +96,7 @@ export default function RunsListPage() {
                 <th className={dashboardStyles.tableTh}></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-white/[0.08]">
               {filtered.map((r) => (
                 <tr key={r.date} className={dashboardStyles.tableRowHover}>
                   <td className={dashboardStyles.tableTd + " font-mono"}>{r.date}</td>
@@ -106,16 +108,16 @@ export default function RunsListPage() {
                   </td>
                   <td className={dashboardStyles.tableTd}>{r.forecastCount}</td>
                   <td className={dashboardStyles.tableTd}>
-                    <span className="text-destructive">{r.successCount}</span>
+                    <span className="text-emerald-400">{r.successCount}</span>
                     {" / "}
-                    <span className="text-magenta">{r.failedCount}</span>
+                    <span className="text-red-400">{r.failedCount}</span>
                   </td>
                   <td className={dashboardStyles.tableTd}>
                     <Link
                       href={`/runs/${r.date}`}
                       className="text-primary hover:underline text-sm font-medium"
                     >
-                      Details →
+                      Details
                     </Link>
                   </td>
                 </tr>

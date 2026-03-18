@@ -27,35 +27,31 @@
   }
 
   .dark {
-    /* Charcoal Black (#111111) - Primary background */
-    --background: 0 0% 7%;
-    --foreground: 0 0% 92%;
+    --background: 228 8% 6%;
+    --foreground: 0 0% 93%;
 
-    /* Dark Slate Gray (#1C1C1E) - Main content card */
-    --card: 240 2% 11%;
-    --card-foreground: 0 0% 92%;
-    --popover: 240 2% 11%;
-    --popover-foreground: 0 0% 92%;
+    --card: 228 8% 6%;
+    --card-foreground: 0 0% 93%;
+    --popover: 228 8% 6%;
+    --popover-foreground: 0 0% 93%;
 
     /* Vibrant Purple (#5E2DE3) - Main accent color */
     --primary: 262 76% 53%;
-    --primary-foreground: 0 0% 7%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Medium Gray (#8E8E93) - Secondary elements */
-    --secondary: 240 1% 56%;
-    --secondary-foreground: 0 0% 92%;
-    --muted: 240 1% 56%;
-    --muted-foreground: 240 1% 56%;
-    --accent: 240 1% 56%;
-    --accent-foreground: 0 0% 92%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 0 0% 93%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 50%;
+    --accent: 0 0% 11%;
+    --accent-foreground: 0 0% 93%;
 
-    /* Bright Green (#34C759) - Secondary accent */
+    /* Bright Green (#34C759) */
     --destructive: 142 70% 45%;
     --destructive-foreground: 0 0% 7%;
 
-    /* Borders and inputs using Dark Slate Gray */
-    --border: 240 2% 11%;
-    --input: 240 2% 11%;
+    --border: 0 0% 100% / 0.08;
+    --input: 0 0% 100% / 0.08;
     --ring: 262 76% 53%;
   }
 }
@@ -66,77 +62,6 @@
   }
   body {
     @apply bg-background text-foreground;
-  }
-}
-
-@layer utilities {
-  /* Custom dark theme colors */
-  .dark .text-light-gray {
-    color: #eaeaeb;
-  }
-
-  .dark .bg-charcoal-black {
-    background-color: #111111;
-  }
-
-  .dark .bg-dark-slate {
-    background-color: #1c1c1e;
-  }
-
-  .dark .text-vibrant-purple {
-    color: #5e2de3;
-  }
-
-  .dark .bg-vibrant-purple {
-    background-color: #5e2de3;
-  }
-
-  .dark .text-medium-gray {
-    color: #8e8e93;
-  }
-
-  .dark .text-bright-green {
-    color: #34c759;
-  }
-
-  .dark .bg-bright-green {
-    background-color: #34c759;
-  }
-
-  .dark .text-magenta {
-    color: #ff2d55;
-  }
-
-  .dark .bg-magenta {
-    background-color: #ff2d55;
-  }
-
-  .dark .border-dark-slate {
-    border-color: #1c1c1e;
-  }
-
-  .dark .border-vibrant-purple {
-    border-color: #5e2de3;
-  }
-
-  /* Glassy surfaces – same purple as step numbers, consistent across UI */
-  .dark .glass {
-    background: hsl(262 76% 53% / 0.06);
-    border: 1px solid hsl(262 76% 53% / 0.2);
-    backdrop-filter: blur(12px);
-  }
-  .dark .glass-card {
-    background: hsl(240 2% 11% / 0.7);
-    border: 1px solid hsl(0 0% 100% / 0.08);
-    backdrop-filter: blur(12px);
-  }
-  .dark .glass-bar {
-    background: hsl(262 76% 53% / 0.5);
-    backdrop-filter: blur(6px);
-  }
-  .dark .glass-range {
-    background: hsl(262 76% 53% / 0.15);
-    backdrop-filter: blur(8px);
   }
 }
 
