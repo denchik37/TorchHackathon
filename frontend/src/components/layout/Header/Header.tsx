@@ -55,7 +55,7 @@ export function Header() {
   }, []);
 
   return (
-    <header className="border-b border-border bg-background">
+    <header className="sticky top-0 z-50 border-b border-border bg-background animate-[slideDown_0.3s_ease-out]">
       <div className="mx-auto flex h-12 max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Left: logo + nav tabs */}
         <div className="flex items-center gap-6">

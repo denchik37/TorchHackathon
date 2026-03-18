@@ -165,9 +165,8 @@ export function WalletSelector() {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <button type="button" className={walletSelectorStyles.trigger}>
-          <Wallet className="w-4 h-4" />
-          <span>Connect Wallet</span>
-          <ChevronDown className="w-4 h-4 opacity-70" />
+          <Wallet className="size-3.5" />
+          Connect
         </button>
       </DialogTrigger>
       <DialogContent className={walletSelectorStyles.dialogContent}>
@@ -176,6 +175,9 @@ export function WalletSelector() {
             Choose your wallet
           </DialogTitle>
         </DialogHeader>
+        <p className={walletSelectorStyles.dialogSubtitle}>
+          Connect a Hedera-compatible wallet to get started
+        </p>
         <div className={walletSelectorStyles.optionsList}>
           {walletOptions.map((wallet) => (
             <button
@@ -189,6 +191,7 @@ export function WalletSelector() {
                 <span className={walletSelectorStyles.optionName}>{wallet.name}</span>
                 <span className={walletSelectorStyles.optionDesc}>{wallet.description}</span>
               </div>
+              <span className={walletSelectorStyles.optionAccent} />
             </button>
           ))}
         </div>
