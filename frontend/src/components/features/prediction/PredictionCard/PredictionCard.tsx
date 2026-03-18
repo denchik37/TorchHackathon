@@ -422,120 +422,109 @@ export function PredictionCard({ className }: PredictionCardProps) {
 
   return (
     <Card className={st.card + (className ? ` ${className}` : '')}>
-      <CardHeader className={st.header + ' p-6 pb-5'}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className={st.badge}>Crypto</span>
-          <span className="text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground">{activeBets}</span> active bets
-          </span>
-        </div>
-        <div className="flex items-start gap-4 mt-4">
-          <Image src="/hedera.svg" alt="Hedera" width={56} height={56} className="flex-shrink-0" />
-          <div className="min-w-0">
-            <h2 className={st.marketTitle}>Predict HBAR token price in USD</h2>
-            <p className={st.priceLabel + ' mt-1 flex items-center gap-1.5 flex-wrap'}>
-              <span>Current price:</span>
-              <HbarPriceDisplay
-                price={currentPrice}
-                isLoading={priceLoading}
-                error={priceError}
-                isStale={isStale}
-                retryFetch={retryFetch}
-                size="sm"
-                showIcon={false}
-              />
-            </p>
+      {/* Header: token selector + title + price */}
+      <div className={st.header}>
+        <div className="flex items-center justify-between mb-4">
+          <div className={st.tokenSelectorWrap}>
+            <button type="button" className={st.tokenActive}>
+              <Image src="/hedera.svg" alt="HBAR" width={16} height={16} className="rounded-full" />
+              HBAR
+            </button>
+            <button type="button" className={st.tokenDisabled} disabled>
+              <span className={st.tokenPlaceholderIcon}>?</span>
+              Soon
+            </button>
           </div>
+          <span className={st.activeBadge}>{activeBets} active</span>
         </div>
-      </CardHeader>
+        <h2 className={st.marketTitle}>HBAR Price Prediction</h2>
+        <p className={st.priceLabel + ' mt-1 flex items-center gap-1.5 flex-wrap'}>
+          <span>Current:</span>
+          <HbarPriceDisplay
+            price={currentPrice}
+            isLoading={priceLoading}
+            error={priceError}
+            isStale={isStale}
+            retryFetch={retryFetch}
+            size="sm"
+            showIcon={false}
+          />
+        </p>
+      </div>
 
-      <CardContent className="p-6 pt-5">
+      {/* Tabs */}
+      <div className={st.headerBottom}>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 rounded-xl bg-background border border-white/10 p-1 h-11">
-            <TabsTrigger value="bet" className="rounded-lg transition-all data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm">
+          <TabsList className={st.tabsList}>
+            <TabsTrigger value="bet" className={st.tabsTrigger + ' data-[state=active]:bg-primary data-[state=active]:text-white'}>
               Bet
             </TabsTrigger>
-            <TabsTrigger value="forecast" className="rounded-lg transition-all data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm">
+            <TabsTrigger value="forecast" className={st.tabsTrigger + ' data-[state=active]:bg-primary data-[state=active]:text-white'}>
               Forecast
             </TabsTrigger>
-            <TabsTrigger value="history" className="rounded-lg transition-all data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm">
+            <TabsTrigger value="history" className={st.tabsTrigger + ' data-[state=active]:bg-primary data-[state=active]:text-white'}>
               History
             </TabsTrigger>
           </TabsList>
+        </Tabs>
+      </div>
 
-          <div className={st.divider} />
-
-          <TabsContent value="bet" className="mt-0 pt-4">
+      <CardContent className="p-0">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsContent value="bet" className="mt-0 px-6 py-5">
             <div className={st.betTabRow}>
-              {/* Row 1: Step 1 – resolution time */}
-              <div>
-                <div className="flex items-center gap-2">
+              {/* Step 1 — Resolution time */}
+              <div className={st.betSection}>
+                <div className="flex items-center gap-2 mb-3">
                   <div className={st.stepBadge}>1</div>
-                  <div>
-                    <h3 className={st.stepTitle}>Select resolution time</h3>
-                    <p className={st.stepHint}>UTC. Minimum 24h lead time.</p>
-                  </div>
+                  <h3 className={st.stepTitle}>Resolution time</h3>
+                  <span className={st.stepHint + ' ml-auto'}>Min 24h lead</span>
                 </div>
-                <div className={st.dateTimeGrid + ' mt-3'}>
+                <div className={st.dateTimeGrid}>
                   <div className={st.dateTimeBox}>
                     <span className={st.dateTimeLabel}>Date</span>
-                    <div className="flex items-center gap-2 w-full justify-center mt-1">
-                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg shrink-0" onClick={decrementDate}>
-                        <Minus className="w-4 h-4" />
-                      </Button>
-                      <div className={st.dateTimeValue}>
+                    <div className="flex items-center gap-2">
+                      <button type="button" className={st.dateTimeButton} onClick={decrementDate}>
+                        <Minus className="size-3" />
+                      </button>
+                      <span className={st.dateTimeValue + ' min-w-[60px] text-center'}>
                         {formatDate(resolutionDate)} {formatDay(resolutionDate)}
-                      </div>
-                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg shrink-0" onClick={incrementDate}>
-                        <Plus className="w-4 h-4" />
-                      </Button>
+                      </span>
+                      <button type="button" className={st.dateTimeButton} onClick={incrementDate}>
+                        <Plus className="size-3" />
+                      </button>
                     </div>
                     <span className={st.dateTimeMeta}>{resolutionDate.getFullYear()}</span>
                   </div>
                   <div className={st.dateTimeBox}>
                     <span className={st.dateTimeLabel}>Time (UTC)</span>
-                    <div className="flex items-center gap-2 w-full justify-center mt-1">
-                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg shrink-0" onClick={decrementTime}>
-                        <Minus className="w-4 h-4" />
-                      </Button>
-                      <span className={st.dateTimeValue}>{resolutionTime}</span>
-                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg shrink-0" onClick={incrementTime}>
-                        <Plus className="w-4 h-4" />
-                      </Button>
+                    <div className="flex items-center gap-2">
+                      <button type="button" className={st.dateTimeButton} onClick={decrementTime}>
+                        <Minus className="size-3" />
+                      </button>
+                      <span className={st.dateTimeValue + ' min-w-[60px] text-center'}>{resolutionTime}</span>
+                      <button type="button" className={st.dateTimeButton} onClick={incrementTime}>
+                        <Plus className="size-3" />
+                      </button>
                     </div>
                     <span className={st.dateTimeMeta}>UTC</span>
                   </div>
                 </div>
               </div>
 
-              {/* Row 2: Step 2 – price range */}
-              <div className={st.betTabRowWithBorder}>
+              {/* Step 2 — Price range + quality */}
+              <div className={st.betSection}>
                 {priceLoading || !currentPrice ? (
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <div className="h-4 w-20 bg-muted rounded animate-pulse" />
                       <div className="h-4 w-24 bg-muted rounded animate-pulse" />
                     </div>
-                    <div className="relative h-40 bg-muted/50 rounded-xl overflow-hidden">
+                    <div className="relative h-40 bg-muted/50 rounded-lg overflow-hidden">
                       <div className="flex items-end justify-between h-full gap-px p-2">
                         {Array.from({ length: 30 }).map((_, i) => (
                           <div key={i} className="flex-1 bg-muted rounded-t min-h-[8px]" style={{ height: `${30 + Math.random() * 50}%` }} />
                         ))}
-                      </div>
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span className="h-3 w-12 bg-muted rounded animate-pulse" />
-                      <span className="h-3 w-12 bg-muted rounded animate-pulse" />
-                      <span className="h-3 w-12 bg-muted rounded animate-pulse" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <div className="h-4 w-16 bg-muted rounded animate-pulse" />
-                        <div className="h-10 bg-muted rounded-lg animate-pulse" />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="h-4 w-16 bg-muted rounded animate-pulse" />
-                        <div className="h-10 bg-muted rounded-lg animate-pulse" />
                       </div>
                     </div>
                   </div>
@@ -549,12 +538,10 @@ export function PredictionCard({ className }: PredictionCardProps) {
                     onRangeChange={handleRangeChange}
                   />
                 )}
-              </div>
 
-              {/* Row 3: Step 3 – bet quality, deposit, fee, warning, CTA */}
-              <div className={st.betTabRowWithBorder}>
-                <div className="space-y-2 mb-4">
-                  <h3 className={st.stepTitle}>Bet quality</h3>
+                {/* Bet quality */}
+                <div className="mt-3 pt-3">
+                  <span className={st.summaryLabel}>Bet quality</span>
                   <div className={st.summaryChips}>
                     <div className={st.summaryChip}>
                       <span className={st.summaryChipLabel}>Sharpness </span>
@@ -576,50 +563,49 @@ export function PredictionCard({ className }: PredictionCardProps) {
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className={st.stepBadge}>3</div>
-                    <label htmlFor="depositNumber" className={st.stepTitle}>Deposit amount</label>
+              {/* Step 3 — Deposit */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className={st.stepBadge}>3</div>
+                  <label htmlFor="depositNumber" className={st.stepTitle}>Deposit amount</label>
+                </div>
+                <div className={st.amountInputWrap}>
+                  <Input
+                    id="depositNumber"
+                    type="text"
+                    inputMode="decimal"
+                    value={depositAmount}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) setDepositAmount(value);
+                    }}
+                    className={st.amountInput + ' pr-16 h-10'}
+                    placeholder="0.0"
+                  />
+                  <div className={st.amountSuffix}>
+                    {!hasValidAmount && depositAmount && parseFloat(depositAmount) > 0 && (
+                      <AlertTriangle className="size-3.5 text-destructive" />
+                    )}
+                    <span>HBAR</span>
                   </div>
-                  <div className={st.amountModule}>
-                    <div className={st.amountInputWrap}>
-                      <Input
-                        id="depositNumber"
-                        type="text"
-                        inputMode="decimal"
-                        value={depositAmount}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) setDepositAmount(value);
-                        }}
-                        className={st.amountInput + ' pr-16 h-11'}
-                        placeholder="0.0"
-                      />
-                      <div className={st.amountSuffix}>
-                        {!hasValidAmount && depositAmount && parseFloat(depositAmount) > 0 && (
-                          <AlertTriangle className="w-4 h-4 text-destructive" />
-                        )}
-                        <span>HBAR</span>
-                      </div>
-                    </div>
-                    <div className={st.amountActions}>
-                      <span className="text-muted-foreground">Balance: {balance}</span>
-                      <button type="button" onClick={handleMaxDeposit} className={st.amountMax}>
-                        Use MAX
-                      </button>
-                    </div>
-                  </div>
-                  <div className={st.protocolFeeRow}>
-                    <span className="text-muted-foreground">Protocol fee</span>
-                    <span className="text-foreground font-medium">{getProtocolFeeDisplay()}</span>
-                  </div>
+                </div>
+                <div className={st.amountActions}>
+                  <span className="text-muted-foreground">Balance: {balance}</span>
+                  <button type="button" onClick={handleMaxDeposit} className={st.amountMax}>
+                    MAX
+                  </button>
+                </div>
+                <div className={st.protocolFeeRow}>
+                  <span className="text-muted-foreground">Protocol fee</span>
+                  <span className="text-foreground font-medium">{getProtocolFeeDisplay()}</span>
                 </div>
 
                 {hasValidAmount && (
-                  <div className={st.calloutWarning + ' mt-5'}>
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className={st.calloutIcon + ' w-4 h-4'} />
+                  <div className={st.calloutWarning + ' mt-4'}>
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className={st.calloutIcon + ' size-4'} />
                       <p className={st.calloutWarningText}>
                         Betting on prediction markets bears significant risk of losing funds. Only
                         contribute what you can afford to lose.
@@ -629,18 +615,17 @@ export function PredictionCard({ className }: PredictionCardProps) {
                 )}
 
                 {betError && (
-                  <div className={st.calloutError}>
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className={st.calloutIcon + ' w-4 h-4 text-destructive'} />
+                  <div className={st.calloutError + ' mt-4'}>
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className="size-4 shrink-0 mt-0.5 text-destructive" />
                       <p className="text-sm text-destructive-foreground">{betError}</p>
                     </div>
                   </div>
                 )}
 
-                <div className="mt-6">
+                <div className="mt-5">
                   <Button
-                    className={st.ctaButton + ' bg-primary text-white hover:bg-primary/90' + (!canPlaceBet ? ' ' + st.ctaButtonDisabled : '')}
-                    size="lg"
+                    className={st.ctaButton + ' bg-primary text-white hover:bg-primary/85' + (!canPlaceBet ? ' ' + st.ctaButtonDisabled : '')}
                     onClick={handlePlaceBet}
                     disabled={!canPlaceBet}
                   >
@@ -651,11 +636,11 @@ export function PredictionCard({ className }: PredictionCardProps) {
             </div>
           </TabsContent>
 
-          <TabsContent value="forecast" className="mt-0 pt-2 pb-8">
+          <TabsContent value="forecast" className="mt-0 px-6 pt-2 pb-12">
             <KDEChart currentPrice={currentPrice} className="h-96 pt-2 pb-4" />
           </TabsContent>
 
-          <TabsContent value="history" className="mt-0 pt-4">
+          <TabsContent value="history" className="mt-0 px-6 py-5">
             <BetHistory />
           </TabsContent>
         </Tabs>
