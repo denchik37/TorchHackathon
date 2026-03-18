@@ -517,13 +517,13 @@ export function PredictionCard({ className }: PredictionCardProps) {
                 {priceLoading || !currentPrice ? (
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                      <div className="h-4 w-20 bg-muted rounded animate-pulse" />
-                      <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                      <div className="h-4 w-20 bg-white/[0.06] rounded animate-pulse" />
+                      <div className="h-4 w-24 bg-white/[0.06] rounded animate-pulse" />
                     </div>
-                    <div className="relative h-40 bg-muted/50 rounded-lg overflow-hidden">
+                    <div className="relative h-44 rounded-md border border-white/[0.06] overflow-hidden">
                       <div className="flex items-end justify-between h-full gap-px p-2">
                         {Array.from({ length: 30 }).map((_, i) => (
-                          <div key={i} className="flex-1 bg-muted rounded-t min-h-[8px]" style={{ height: `${30 + Math.random() * 50}%` }} />
+                          <div key={i} className="flex-1 bg-white/[0.06] rounded-t min-h-[8px]" style={{ height: `${30 + Math.random() * 50}%` }} />
                         ))}
                       </div>
                     </div>
