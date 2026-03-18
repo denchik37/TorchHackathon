@@ -107,7 +107,7 @@ export function Header() {
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-accent transition-colors hover:bg-accent/80"
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[hsl(0_0%_11%)] transition-colors hover:bg-[hsl(0_0%_13%)]"
                     aria-label="Wallet menu"
                   >
                     <span className="size-1.5 rounded-full bg-emerald-500 shrink-0" />

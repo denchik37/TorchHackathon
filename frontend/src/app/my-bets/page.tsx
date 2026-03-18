@@ -6,14 +6,12 @@ import {
   useWriteContract,
   useWatchTransactionReceipt,
 } from '@buidlerlabs/hashgraph-react-wallets';
-import { HashpackConnector } from '@buidlerlabs/hashgraph-react-wallets/connectors';
 import { gql, useApolloClient } from '@apollo/client';
 
 import { Bet } from '@/lib/types';
 import TorchPredictionMarketABI from '../../../abi/TorchPredictionMarket.json';
 
-import { Header } from '@/components/layout';
-import { Card, CardContent } from '@/components/ui/card';
+import { PageLayout } from '@/components/layout';
 import { NoBetsContainer, BetCard, NoBetsCard } from '@/components/features/bets';
 import { NoWalletConnectedContainer } from '@/components/features/wallet';
 import { Loader2 } from 'lucide-react';
@@ -100,7 +98,7 @@ const getBetStatus = (bet: Bet): 'active' | 'won' | 'lost' | 'unredeemed' => {
 
 export default function MyBetsPage() {
   const { data: evmAddress } = useEvmAddress();
-  const { isConnected } = useWallet(HashpackConnector);
+  const { isConnected } = useWallet();
   const [activeCategory, setActiveCategory] = useState('all');
   const [redeemingBetId, setRedeemingBetId] = useState<string | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
@@ -349,95 +347,86 @@ export default function MyBetsPage() {
     }
   };
 
+  const cardClass = 'rounded-xl border border-white/[0.08] bg-background p-4';
+
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-4xl">
-        {!isConnected ? (
-          <NoWalletConnectedContainer />
-        ) : (
-          <>
-            {loading && (
-              <div className="flex justify-center py-20">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    <PageLayout>
+      {!isConnected ? (
+        <NoWalletConnectedContainer />
+      ) : (
+        <>
+          {loading && (
+            <div className="flex justify-center py-20">
+              <Loader2 className="size-8 animate-spin text-primary" />
+            </div>
+          )}
+
+          {!bets.length && !loading && <NoBetsContainer />}
+
+          {bets.length > 0 && (
+            <div className="space-y-6">
+              {/* Filter pills */}
+              <div className="flex gap-1 rounded-lg bg-[hsl(0_0%_7%)] p-0.5 border border-white/[0.06] overflow-x-auto">
+                {categories.map((category) => {
+                  const isActive = activeCategory === category.id;
+                  return (
+                    <button
+                      type="button"
+                      key={category.id}
+                      onClick={() => setActiveCategory(category.id)}
+                      className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-primary text-white'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {category.label}
+                      <span className={`ml-1.5 text-xs tabular-nums ${isActive ? 'opacity-90' : 'opacity-60'}`}>{category.count}</span>
+                    </button>
+                  );
+                })}
               </div>
-            )}
 
-            {!bets.length && !loading && <NoBetsContainer />}
-
-            {bets.length > 0 && (
-              <div className="space-y-6">
-                {/* Filter pills – glassy container, active tab purple + white text */}
-                <div className="flex gap-1 p-1 rounded-xl bg-card/60 backdrop-blur-md border border-white/10 overflow-x-auto">
-                  {categories.map((category) => {
-                    const isActive = activeCategory === category.id;
-                    return (
-                      <button
-                        type="button"
-                        key={category.id}
-                        onClick={() => setActiveCategory(category.id)}
-                        className={`flex-shrink-0 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                          isActive
-                            ? 'bg-primary text-white shadow-sm'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        {category.label}
-                        <span className={`ml-2 text-xs ${isActive ? 'opacity-90' : 'opacity-80'}`}>{category.count}</span>
-                      </button>
-                    );
-                  })}
+              {/* Summary cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className={cardClass}>
+                  <p className="text-2xl font-bold text-foreground tabular-nums">{bets.length}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Total bets</p>
                 </div>
-
-                {/* Summary cards – glassy */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <Card className="rounded-xl border border-white/10 bg-card/80 backdrop-blur-sm">
-                    <CardContent className="p-5">
-                      <p className="text-2xl font-bold text-foreground tabular-nums">{bets.length}</p>
-                      <p className="text-xs font-medium text-muted-foreground mt-1">Total bets</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="rounded-xl border border-white/10 bg-card/80 backdrop-blur-sm">
-                    <CardContent className="p-5">
-                      <p className="text-2xl font-bold text-destructive tabular-nums">{wonBets.length}</p>
-                      <p className="text-xs font-medium text-muted-foreground mt-1">Won</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="rounded-xl border border-white/10 bg-card/80 backdrop-blur-sm">
-                    <CardContent className="p-5">
-                      <p className="text-2xl font-bold text-muted-foreground tabular-nums">{lostBets.length}</p>
-                      <p className="text-xs font-medium text-muted-foreground mt-1">Lost</p>
-                    </CardContent>
-                  </Card>
-                  <Card className="rounded-xl border border-white/10 bg-card/80 backdrop-blur-sm">
-                    <CardContent className="p-5">
-                      <p className="text-2xl font-bold text-primary tabular-nums">
-                        {bets.filter((bet) => !bet.finalized).length}
-                      </p>
-                      <p className="text-xs font-medium text-muted-foreground mt-1">Active</p>
-                    </CardContent>
-                  </Card>
+                <div className={cardClass}>
+                  <p className="text-2xl font-bold text-emerald-400 tabular-nums">{wonBets.length}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Won</p>
                 </div>
-
-                <div className="space-y-4">
-                  {filteredBets.length === 0 ? (
-                    <NoBetsCard activeCategory={activeCategory} />
-                  ) : (
-                    filteredBets.map((bet) => (
-                      <BetCard
-                        key={bet.id}
-                        bet={bet}
-                        onRedeem={redeemBet}
-                        redeemingBetId={redeemingBetId}
-                      />
-                    ))
-                  )}
+                <div className={cardClass}>
+                  <p className="text-2xl font-bold text-muted-foreground tabular-nums">{lostBets.length}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Lost</p>
+                </div>
+                <div className={cardClass}>
+                  <p className="text-2xl font-bold text-primary tabular-nums">
+                    {bets.filter((bet) => !bet.finalized).length}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Active</p>
                 </div>
               </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+
+              <div className="space-y-4">
+                {filteredBets.length === 0 ? (
+                  <NoBetsCard activeCategory={activeCategory} />
+                ) : (
+                  filteredBets.map((bet) => (
+                    <BetCard
+                      key={bet.id}
+                      bet={bet}
+                      onRedeem={redeemBet}
+                      redeemingBetId={redeemingBetId}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </PageLayout>
   );
 }
