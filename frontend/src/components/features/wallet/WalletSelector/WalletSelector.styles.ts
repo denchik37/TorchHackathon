@@ -5,7 +5,7 @@ export const walletSelectorStyles = {
 
   /** Dialog — tight, elevated one level above page */
   dialogContent:
-    'sm:max-w-[380px] rounded-lg border border-border bg-card p-0 gap-0 overflow-hidden [&>button]:text-muted-foreground [&>button]:hover:text-foreground [&>button]:opacity-100 [&>button]:right-3.5 [&>button]:top-3.5',
+    'sm:max-w-[380px] rounded-lg border border-white/[0.08] bg-background p-0 gap-0 overflow-hidden [&>button]:text-muted-foreground [&>button]:hover:text-foreground [&>button]:opacity-100 [&>button]:right-3.5 [&>button]:top-3.5',
   dialogHeader: 'px-5 pt-5 pb-1',
   dialogTitle: 'text-[15px] font-semibold text-foreground',
   dialogSubtitle: 'px-5 pb-4 text-xs text-muted-foreground',
