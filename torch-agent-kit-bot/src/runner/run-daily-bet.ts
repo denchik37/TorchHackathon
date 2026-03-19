@@ -12,7 +12,7 @@ import { parseMinMax } from "../parse/minmax.js";
 import { getNextEligibleTargets } from "../time/targets.js";
 import { buildBetParams } from "../policy/betPolicy.js";
 import { createHederaClient } from "../hedera/client.js";
-import { placeBet } from "../hedera/torch.js";
+import type { PlaceBetResult } from "../hedera/torch.js";
 import {
   betKey,
   loadRunArtifact,
@@ -20,6 +20,9 @@ import {
   saveArtifact,
   type RunArtifact,
 } from "../storage/runStore.js";
+import {
+  executeTorchPlaceBet,
+} from "../agentkit/torchPlaceBetPlugin.js";
 
 const RUNS_DIR = "runs";
 
@@ -188,7 +191,13 @@ export async function main(): Promise<void> {
     }
 
     try {
-      const placeResult = await placeBet(client!, params);
+      const placeResult: PlaceBetResult = await executeTorchPlaceBet(client!, {
+        targetTimestamp: params.targetTimestamp,
+        priceMinInt: params.priceMinInt.toString(),
+        priceMaxInt: params.priceMaxInt.toString(),
+        stakeTinybar: params.stakeTinybar.toString(),
+        stakeHbar: params.stakeHbar,
+      });
       results.push({
         betKey: key,
         targetTimestamp: params.targetTimestamp,

@@ -20,7 +20,11 @@
   },
   "dependencies": {
     "@hashgraph/sdk": "^2.52.0",
+    "@langchain/core": "^1.1.33",
+    "@langchain/langgraph": "^1.2.3",
     "dotenv": "^17.3.1",
+    "hedera-agent-kit": "^3.8.1",
+    "langchain": "^1.2.34",
     "openai": "^4.73.0",
     "pino": "^9.5.0",
     "zod": "^3.23.0"
