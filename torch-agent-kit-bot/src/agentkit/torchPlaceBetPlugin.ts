@@ -45,7 +45,7 @@ export async function executeTorchPlaceBet(
 // - tools: (context) => Tool[]
 // We keep types loose here to avoid tight coupling to internal toolkit type exports.
 export const torchPlaceBetPlugin = {
-  name: "torch-place-bet-plugin",
+  name: "torch-plugin",
   version: "1.0.0",
   description:
     "Custom tool that executes TorchPredictionMarket.placeBet via your existing Hedera SDK implementation.",

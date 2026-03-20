@@ -1,6 +1,6 @@
 # Torch Frontend
 
-A modern Next.js frontend for the Torch cryptocurrency prediction market platform, built with Tailwind CSS, Radix UI, and viem for wallet integration.
+A modern Next.js frontend for the Torch cryptocurrency prediction market platform, built with Tailwind CSS, Radix UI, and Hedera wallet tooling (`@buidlerlabs/hashgraph-react-wallets` + WalletConnect).
 
 ## End User Features
 
@@ -30,7 +30,7 @@ Torch provides a comprehensive prediction market interface with the following ca
 - **Framework**: Next.js 14 with App Router
 - **Styling**: Tailwind CSS with custom design system
 - **UI Components**: Radix UI + shadcn/ui
-- **Wallet Integration**: @buidlerlabs/hashgraph-react-wallets
+- **Wallet Integration**: @buidlerlabs/hashgraph-react-wallets (HashPack + WalletConnect)
 - **Charts**: Recharts for data visualization
 - **Authentication**: Clerk (admin panel)
 - **Data**: Apollo Client + GraphQL

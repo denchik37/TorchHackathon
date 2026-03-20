@@ -10,7 +10,7 @@ Type=oneshot
 User=torch
 WorkingDirectory=/opt/torch-agent-kit-bot
 EnvironmentFile=/etc/torch/torch-bet-bot.env
-ExecStart=/usr/bin/npm run daily
+ExecStart=/usr/bin/npm run daily:agentkit
 StandardOutput=journal
 StandardError=journal
 

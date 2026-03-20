@@ -12,29 +12,16 @@
 
 This repository contains the smart contracts for a **quality-weighted prediction market** where users can bet on future TORCH token prices. Built with enterprise-grade security and optimized for the Hedera network.
 
-## 🌐 Live Deployments
+## 🌐 Deployments
 
-### **🔥 Mainnet - Production Ready**
-<<<<<<< HEAD
-> **Contract Address (Hedera)**: `0.0.10104147`  
-> **Contract Address (EVM)**: `0x15015770b8D5177FB642e58F5de7F3B01040c9f0`  
-> **Total Bets**: **100 live bets**  
-> **Status**: ✅ **Live and Active**  
-> **View on HashScan**: [https://hashscan.io/mainnet/contract/0.0.10104147](https://hashscan.io/mainnet/contract/0.0.10104147)
-=======
+This repo builds the Torch smart contracts. Deployed contract ids can vary between hackathon/demo runs.
 
-> **Contract Address**: `0.0.10096249`  
-> **Total Bets**: **200+ bets placed**  
-> **Status**: ✅ **Live and Active**  
-> **View on HashScan**: [https://hashscan.io/mainnet/contract/0.0.10096249/calls?p=1&k=1754665751.622824115](https://hashscan.io/mainnet/contract/0.0.10096249/calls?p=1&k=1754665751.622824115)
->>>>>>> 9b66897e863403e661a7233b83747881d4efff92
+### Mainnet
+- Set `TORCH_CONTRACT_ID` in the consuming services (`frontend`, `torch-agent-kit-bot`, `torch-oracle-resolver`) to the deployed TorchPredictionMarket contract you want to demo.
+- View on HashScan: `https://hashscan.io/mainnet/contract/<TORCH_CONTRACT_ID>`
 
-### **🧪 Testnet - Extensive Testing**
-
-> **Contract Address**: `0.0.6363532`  
-> **Hedera Used**: **240+ HBAR** for comprehensive testing  
-> **Ethereum Address**: `0x8611e91d4d111fdc44b9a20f9249e18751c8f9bf`  
-> **Status**: ✅ **Thoroughly Tested**
+### Testnet
+- Use the same `TORCH_CONTRACT_ID` approach for your testnet deployment.
 
 ---
 

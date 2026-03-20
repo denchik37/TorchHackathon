@@ -14,7 +14,7 @@ Token-protected read-only HTTP API that serves run artifacts from the bet bot an
 ## Example curl
 
 ```bash
-curl http://65.108.254.251:3001/api/health -H "Authorization: Bearer YOUR_TOKEN"
+curl http://YOUR_HETZNER_IP:3001/api/health -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 ## Endpoints (all GET, all require `Authorization: Bearer <token>`)

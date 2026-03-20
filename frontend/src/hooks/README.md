@@ -7,7 +7,7 @@ This hook provides a comprehensive interface for interacting with the TorchPredi
 Make sure you have the required dependencies:
 
 ```bash
-npm install ethers@^5.7.2
+npm install ethers@^5.8.0
 ```
 
 ## Setup

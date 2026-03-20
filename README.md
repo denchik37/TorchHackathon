@@ -102,7 +102,7 @@ Deployment is split between **Vercel** (UI and server-side proxy) and **Hetzner*
 **Summary**
 
 - **Vercel:** Frontend and (optionally) dashboard. Oracle routes **proxy** to Hetzner `torch-api`; no resolver execution, no resolver private key, no reading resolver artifacts from disk.
-- **Hetzner:** `torch-api` (read-only HTTP API), `torch-oracle-resolver` (on-chain writes, state and run artifacts), `torch-agent-kit-bot` (daily bets). systemd timers drive resolver and bot; torch-api reads artifacts from configured dirs (e.g. `/var/lib/torch/resolver-runs`, resolver state at `/var/lib/torch/resolver-state/state.json`).
+- **Hetzner:** `torch-api` (read-only HTTP API), `torch-oracle-resolver` (on-chain writes, state and run artifacts), `torch-agent-kit-bot` (daily bets via `npm run daily:agentkit` at 12:00 UTC; horizon via `DAYS_AHEAD`; executes via `TORCH_PLACE_BET_TOOL` from `torch-plugin`). systemd timers drive resolver and bot; torch-api reads artifacts from configured dirs (e.g. `/var/lib/torch/resolver-runs`, resolver state at `/var/lib/torch/resolver-state/state.json`).
 
 ---
 
@@ -127,7 +127,7 @@ TorchOriginsHackathon/
 | **frontend** | Prediction UI, wallet connect, subgraph proxy, Oracle page (proxies to torch-api for run data). |
 | **torch-api** | Read-only REST API on Hetzner; serves betting and resolver run artifacts; auth via Bearer token. |
 | **torch-oracle-resolver** | Runs only on Hetzner; fetches unresolved bets, checks prices (CoinGecko + oracle), calls `setPricesForTimestamps` and `processBatch`; writes `RESOLVE-*.json` and `state.json`. |
-| **torch-agent-kit-bot** | Daily job on Hetzner; OpenAI forecast, places bets; writes `runs/YYYY-MM-DD.json`. Optional **dashboard** in `torch-agent-kit-bot/dashboard` shows runs and proxies to torch-api. |
+| **torch-agent-kit-bot** | Daily job on Hetzner; LangChain createAgent forecasts (OpenAI) and calls `TORCH_PLACE_BET_TOOL` from `torch-plugin` to execute (or parse-only) `placeBet(...)`; writes `runs/YYYY-MM-DD.json`. Optional **dashboard** in `torch-agent-kit-bot/dashboard` shows runs and proxies to torch-api. |
 
 ---
 
@@ -140,7 +140,7 @@ Copy the relevant `.env.example` in each app and set values. **Never commit real
 | **frontend** | `NEXT_PUBLIC_SUBGRAPH_URL`, `NEXT_PUBLIC_CONTRACT_ID`, `TORCH_API_BASE`, `DASHBOARD_API_TOKEN` | `TORCH_API_BASE` and `DASHBOARD_API_TOKEN` are **server-only**; Oracle page proxies to Hetzner torch-api. |
 | **torch-api** | `PORT`, `DASHBOARD_API_TOKEN`, `BETTING_RUNS_DIR`, `RESOLVER_RUNS_DIR` | Reads artifacts from disk; token required for dashboard/frontend proxy. |
 | **torch-oracle-resolver** | `NETWORK`, `ADMIN_ACCOUNT_ID`, `ADMIN_PRIVATE_KEY`, `TORCH_CONTRACT_ID`, `SUBGRAPH_URL`, `RESOLVER_RUNS_DIR`, `RESOLVER_STATE_PATH` | Resolver runs **only on Hetzner**; in production set `RESOLVER_RUNS_DIR=/var/lib/torch/resolver-runs`, `RESOLVER_STATE_PATH=/var/lib/torch/resolver-state/state.json`. |
-| **torch-agent-kit-bot** | `ACCOUNT_ID`, `PRIVATE_KEY`, `NETWORK`, `TORCH_CONTRACT_ID`, `OPENAI_API_KEY` | Writes to `./runs`; torch-api’s `BETTING_RUNS_DIR` must point to that dir on the server. |
+| **torch-agent-kit-bot** | `ACCOUNT_ID`, `PRIVATE_KEY`, `NETWORK`, `TORCH_CONTRACT_ID`, `OPENAI_API_KEY`, `MIN_TARGET_LEAD_SECONDS`, `DAYS_AHEAD`, `DRY_RUN`, `STAKE_HBAR`, `GAS_LIMIT` | Writes betting run artifacts to `./runs` on Hetzner; horizon controlled by `DAYS_AHEAD` (set `DAYS_AHEAD=7` for the next 7 eligible days). |
 | **dashboard** (in bot repo) | `TORCH_API_BASE`, `DASHBOARD_API_TOKEN`, `BOT_ACCOUNT_ID`, `BOT_NETWORK` | Proxies to torch-api; does not run resolver. |
 
 See each app’s `.env.example` for full, commented lists.
@@ -176,8 +176,8 @@ cd torch-api && cp .env.example .env && npm install && npm run dev
 # Resolver (local: uses ./runs and ./state.json if RESOLVER_RUNS_DIR/RESOLVER_STATE_PATH unset)
 cd torch-oracle-resolver && cp .env.example .env && npm install && npm run resolve:once
 
-# Bet bot
-cd torch-agent-kit-bot && cp .env.example .env && npm install && npm run daily
+# Bet bot (production runner uses Agent Kit tooling)
+cd torch-agent-kit-bot && cp .env.example .env && npm install && npm run daily:agentkit
 ```
 
 Frontend Oracle page shows resolver run data only when `TORCH_API_BASE` and `DASHBOARD_API_TOKEN` are set and torch-api is reachable; otherwise it returns an empty list and a message.
@@ -239,11 +239,15 @@ Each resolver run produces a JSON artifact (e.g. in torch-api responses and on d
 - **Contracts:** Hardhat, Solidity ^0.8.0; Foundry optional.
 - **Chain:** Hedera (Hashgraph, JSON-RPC, HashScan).
 - **Frontend:** Next.js, React, TypeScript, GraphQL Apollo, Clerk, HashConnect.
+- **Agent Runner:** Node.js + TypeScript, OpenAI (forecast), LangChain, Hedera Agent Kit (tool: `TORCH_PLACE_BET_TOOL` from `torch-plugin`).
 - **Indexing:** Graph Protocol subgraph; Graph Node on VPS.
 - **Hosting:** Vercel (frontend); Hetzner (torch-api, resolver, bet bot, subgraph).
 
 ```bash
 cd smartContracts && npm install
+cd torch-api && npm install
+cd torch-oracle-resolver && npm install
+cd torch-agent-kit-bot && npm install
 cd torch-subgraph && npm install
 cd frontend && npm install
 ```

@@ -1,11 +1,11 @@
 # Template: copy to /etc/systemd/system/torch-bet-bot.timer
-# Runs torch-bet-bot.service daily (e.g. 08:00 UTC).
+# Runs torch-bet-bot.service daily (e.g. 12:00 UTC).
 
 [Unit]
 Description=Run Torch bet bot daily
 
 [Timer]
-OnCalendar=*-*-* 08:00:00 UTC
+OnCalendar=*-*-* 12:00:00 UTC
 Persistent=yes
 
 [Install]

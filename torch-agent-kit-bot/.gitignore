@@ -5,3 +5,8 @@ build/
 .next/
 coverage/
 .env
+.env.*
+!.env.example
+
+# Local run artifacts (generated)
+runs/

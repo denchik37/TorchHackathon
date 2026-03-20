@@ -1,14 +1,19 @@
 # Daily Torch Bet Agent (Hedera Agent Kit / SDK)
 
-This bot places one bet per day for the **next eligible target day** at 12:00 UTC, using OpenAI GPT-5.2 for the forecast and the **Hedera SDK** (Agent Kit style: operator `ACCOUNT_ID` + `PRIVATE_KEY`) to submit the transaction.
+This runner (`npm run daily:agentkit`) generates deterministic price forecasts with OpenAI and executes (or parse-only) the Torch contract `placeBet(...)` via `TORCH_PLACE_BET_TOOL` from the local `torch-plugin`.
 
 ## What it does
 
-1. Computes the next eligible target day at **12:00 UTC** with a minimum **24h lead time** (configurable) to avoid "Target too soon".
-2. Calls OpenAI Chat Completions (GPT-5.2–compatible: `max_completion_tokens`, `reasoning_effort`, no `temperature`) to get a single line: `Min: [x], Max: [y]`.
-3. Parses the line (bracketed or plain, optional trailing period).
-4. Encodes prices as 8-decimal fixed-point (same as frontend) and builds `placeBet(targetTimestamp, priceMin, priceMax)` payable via **ContractExecuteTransaction**.
-5. Persists a run artifact to `./runs/YYYY-MM-DD.json` (idempotency: skips if that betKey already has a successful tx for the day).
+1. Computes eligible target days at **12:00 UTC** using:
+   - `MIN_TARGET_LEAD_SECONDS` (default `86400`) to avoid "Target too soon"
+   - `DAYS_AHEAD` to control the forecast/execution horizon (set to `7` for the next 7 eligible days).
+2. For each eligible target day:
+   - Generates exactly one forecast line in the format `Min: x, Max: y`.
+   - Calls `TORCH_PLACE_BET_TOOL` with:
+     - `forecastRaw` (the exact forecast line)
+     - `execute=true` only when it should actually place the bet (respects duplicates + `DRY_RUN`).
+3. Writes a run artifact to `./runs/YYYY-MM-DD.json` with `forecasts[]`, `betParams[]`, and `results[]`.
+4. Idempotency: if a bet (keyed by `SYMBOL:targetTimestamp`) already has a successful on-chain tx (receipt status `22`), the runner records `skippedDuplicate: true` and does not re-execute.
 
 ## Setup
 
@@ -30,24 +35,26 @@ npm install
 - **Dry run** (no on-chain tx, writes artifact only):
 
   ```bash
-  DRY_RUN=true npm run daily
+  DRY_RUN=true npm run daily:agentkit
   ```
 
 - **Live** (after removing or setting `DRY_RUN=false`):
 
   ```bash
-  npm run daily
+  DRY_RUN=false npm run daily:agentkit
   ```
 
 ## Scheduling
 
-Run once per day so that the "next eligible" target is always the same calendar day. Example cron (12:00 UTC):
+Run once per day at **12:00 UTC** (the bot’s daily anchor). Example cron (12:00 UTC):
 
 ```cron
-0 12 * * * cd /path/to/torch-agent-kit-bot && npm run daily
+0 12 * * * cd /path/to/torch-agent-kit-bot && npm run daily:agentkit
 ```
 
-Or use systemd timer / your scheduler to run at 12:00 UTC.
+Or use the provided systemd timer on Hetzner:
+- `ops/torch-option-a/systemd/torch-bet-bot.timer`
+- `ops/torch-option-a/systemd/torch-bet-bot.service`
 
 ## How it avoids "Target too soon"
 
@@ -81,7 +88,8 @@ See `dashboard/README.md` for deployment (e.g. Hetzner + reverse proxy).
 
 | Script            | Description                    |
 |-------------------|--------------------------------|
-| `npm run daily`   | Run daily bet once             |
+| `npm run daily:agentkit` | LangChain + Hedera Agent Kit tool calling (production) |
+| `npm run daily`   | Legacy deterministic runner (optional fallback) |
 | `npm run dev`     | Watch mode (tsx)               |
 | `npm run build`   | Compile TypeScript             |
 | `npm run test`    | Run vitest                     |

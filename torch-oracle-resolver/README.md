@@ -11,9 +11,9 @@ Backlog-capable auto resolver for the Torch Prediction Market. Resolves unsettle
    - `setPricesForTimestamps(timestamps[], prices[])` in batches of `MAX_TIMESTAMPS_PER_TX`.  
    - For each affected bucket, `processBatch(bucket)` until the bucket is aggregation-complete or `MAX_PROCESS_BATCH_TX_PER_BUCKET` is reached.
 
-3. **Idempotency**  
-   - State is stored in `state.json` (resolved timestamps, blocked timestamps).  
-   - Run artifacts are written to `runs/RESOLVE-*.json`.
+3. **Idempotency**
+   - State is stored in `RESOLVER_STATE_PATH` (or local `./state.json`): resolved timestamps + blocked timestamps.
+   - Run artifacts are written to `RESOLVER_RUNS_DIR/RESOLVE-*.json` (or local `./runs/RESOLVE-*.json`).
 
 ## Requirements
 
@@ -56,7 +56,7 @@ npm install
 - **`npm run resolve:loop`** – Run once, then every N minutes (default 15). Set `RESOLVE_LOOP_INTERVAL_MS` to override.
 - **`npm run test`** – Vitest.
 
-## Run artifact (runs/RESOLVE-*.json)
+## Run artifact (`RESOLVER_RUNS_DIR/RESOLVE-*.json`)
 
 - `runId`, `timestampUtc`, `mode` (dryRun | live)
 - `unresolvedCounts`, `eligibleTimestamps`, `skippedTooSoon`, `skippedTooOld`
@@ -65,7 +65,7 @@ npm install
 - `bucketResults[]`: bucketId, processedTxCount, completed, nextProcessIndex, totalBets
 - `errors[]`
 
-## State (state.json)
+## State (`RESOLVER_STATE_PATH`)
 
 - `lastRunAt`
 - `blockedTimestamps`: { [ts]: { reason, lastSeenAt } }

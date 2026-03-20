@@ -5,3 +5,9 @@ build/
 .next/
 coverage/
 .env
+.env.*
+!.env.example
+
+# Local resolver artifacts (generated)
+runs/
+state.json
