@@ -21,6 +21,8 @@ export async function getForecastLine(monthDay: string): Promise<string> {
     model: env.OPENAI_MODEL,
     max_completion_tokens: env.OPENAI_MAX_COMPLETION_TOKENS,
     ...(env.OPENAI_REASONING_EFFORT ? { reasoning_effort: env.OPENAI_REASONING_EFFORT } : {}),
+    // Make the response type non-streaming to keep typings stable.
+    stream: false,
     messages: [
       {
         role: "system",
@@ -31,7 +33,7 @@ export async function getForecastLine(monthDay: string): Promise<string> {
     ],
   } as Parameters<typeof openai.chat.completions.create>[0];
 
-  const completion = await openai.chat.completions.create(params);
+  const completion: any = await openai.chat.completions.create(params);
   const raw = completion.choices[0]?.message?.content?.trim() ?? "";
   return raw;
 }

@@ -8,6 +8,8 @@ build/
 .next/
 coverage/
 .env
+.env.*
+!.env.example
 /.pnp
 .pnp.js
 .yarn/install-state.gz

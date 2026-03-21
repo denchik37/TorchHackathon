@@ -1,13 +1,10 @@
-.vercel
-
-# Dependencies / build artifacts
 node_modules/
 **/node_modules/
-dist/
-build/
 
-# Next.js / coverage
-.next/
+dist/
+
+# Build artifacts / logs
+build/
 coverage/
 
 # Env files (keep .env.example)
@@ -15,6 +12,7 @@ coverage/
 .env.*
 !.env.example
 
-# OS
-.DS_Store
-Thumbs.db
+# Secrets / private keys
+*.pem
+*.key
+

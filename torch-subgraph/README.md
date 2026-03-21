@@ -146,5 +146,9 @@ type Fee @entity(immutable: true) {
 ```
 ---
 
+## Frontend Integration
+- The frontend (hosted on Vercel) queries this subgraph (via `NEXT_PUBLIC_SUBGRAPH_URL`) to render bet and lifecycle data.
+- In production, configure `NEXT_PUBLIC_SUBGRAPH_URL` to your hosted GraphQL endpoint (e.g. Graph Node running on your VPS/Hetzner).
+
 ## 📚 Learn More
 - 💡 [Subgraph Example](https://docs.hedera.com/hedera/tutorials/smart-contracts/deploy-a-subgraph-using-the-graph-and-json-rpc)

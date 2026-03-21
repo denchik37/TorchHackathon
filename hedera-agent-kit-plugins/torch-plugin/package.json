@@ -1,0 +1,27 @@
+{
+  "name": "@torch/hedera-agent-kit-torch-plugin",
+  "version": "0.1.0",
+  "description": "Hedera Agent Kit plugin: deterministic TorchPredictionMarket.placeBet tool.",
+  "type": "module",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "npx --package typescript tsc -p tsconfig.json",
+    "prepare": "npm run build",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@hashgraph/sdk": "^2.52.0",
+    "hedera-agent-kit": "^3.8.1",
+    "zod": "^3.23.0",
+    "typescript": "^5.6.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
+
