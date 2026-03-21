@@ -84,7 +84,7 @@ export default function RunsListPage() {
           No runs yet — run the bot first.
         </div>
       ) : (
-        <div className={dashboardStyles.tableWrap}>
+        <div className={cn(dashboardStyles.tableWrap, "dashboard-future-surface no-hover-transform")}>
           <table className="w-full text-left">
             <thead className={dashboardStyles.tableHead}>
               <tr>

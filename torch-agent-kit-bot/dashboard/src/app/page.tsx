@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { format } from "date-fns";
 import { Copy, Check, ExternalLink, Coins } from "lucide-react";
 import { dashboardStyles } from "@/components/layout/DashboardStyles";
@@ -17,17 +16,6 @@ interface Health {
   } | null;
   nextTargetTimestamp: number;
   nextTargetDate: string;
-}
-
-interface RunSummary {
-  date: string;
-  runId: string;
-  timestampUtc: string;
-  successCount: number;
-  dryRunCount: number;
-  skippedCount: number;
-  failedCount: number;
-  resultCount: number;
 }
 
 interface AccountSummary {
@@ -90,7 +78,6 @@ const HASHSCAN_NETWORK: Record<string, string> = {
 
 export default function OverviewPage() {
   const [health, setHealth] = useState<Health | null>(null);
-  const [runs, setRuns] = useState<RunSummary[]>([]);
   const [account, setAccount] = useState<AccountSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -98,12 +85,10 @@ export default function OverviewPage() {
   useEffect(() => {
     Promise.all([
       fetch("/api/health").then((r) => r.json()),
-      fetch("/api/betting/runs").then((r) => r.json()).then((d) => (Array.isArray(d) ? d : [])),
       fetch("/api/account").then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ])
-      .then(([h, r, a]) => {
+      .then(([h, a]) => {
         setHealth(normalizeHealth(h));
-        setRuns(r);
         setAccount(a);
       })
       .catch(console.error)
@@ -139,7 +124,8 @@ export default function OverviewPage() {
   const attempted = lastRun ? lastRun.successCount + lastRun.dryRunCount + lastRun.skippedCount : 0;
   const succeeded = lastRun?.successCount ?? 0;
 
-  const cardClass = "rounded-xl border border-white/[0.08] bg-background p-4 sm:p-5";
+  const statCardClass = "dashboard-future-surface rounded-xl p-4 sm:p-5";
+  const staticCardClass = "dashboard-future-surface no-hover-transform rounded-xl p-4 sm:p-5";
 
   return (
     <div className={dashboardStyles.page}>
@@ -148,7 +134,7 @@ export default function OverviewPage() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        <div className={cardClass}>
+        <div className={statCardClass}>
           <p className={dashboardStyles.kpiLabel}>Last run</p>
           <p className={dashboardStyles.kpiValue}>
             {lastRun ? formatDateTimeUtc(lastRun.timestampUtc) : "—"}
@@ -157,14 +143,14 @@ export default function OverviewPage() {
             {lastRun ? `${lastRun.successCount} ok, ${lastRun.failedCount} failed` : "No runs yet"}
           </p>
         </div>
-        <div className={cardClass}>
+        <div className={statCardClass}>
           <p className={dashboardStyles.kpiLabel}>Bets attempted / succeeded</p>
           <p className={dashboardStyles.kpiValue}>
             {lastRun ? `${attempted} / ${succeeded}` : "—"}
           </p>
         </div>
-        <div className={cardClass}>
-          <p className={dashboardStyles.kpiLabel}>Next target (12:00 UTC)</p>
+        <div className={statCardClass}>
+          <p className={dashboardStyles.kpiLabel}>Next target</p>
           <p className={dashboardStyles.kpiValue}>
             {health?.nextTargetDate
               ? formatDateTimeUtc(health.nextTargetDate)
@@ -174,7 +160,7 @@ export default function OverviewPage() {
       </div>
 
       {account && (
-        <div className={cardClass + " mb-8"}>
+        <div className={staticCardClass + " mb-8"}>
           <h2 className={dashboardStyles.kpiLabel}>Torch Bot</h2>
           <div className="mt-3 flex items-center gap-2">
             <Coins className="size-5 text-primary flex-shrink-0" />
@@ -211,19 +197,6 @@ export default function OverviewPage() {
         </div>
       )}
 
-      {runs.length === 0 ? (
-        <div className={dashboardStyles.emptyState}>
-          No runs yet — run the bot first (e.g.{" "}
-          <code className="bg-[hsl(0_0%_7%)] px-2 py-1 rounded border border-white/[0.08] font-mono text-xs">npm run daily</code>).
-        </div>
-      ) : (
-        <div className={cardClass}>
-          <h2 className={dashboardStyles.kpiLabel + " mb-4"}>Recent runs</h2>
-          <p className="text-sm text-muted-foreground">
-            View full history in the <Link href="/runs" className="text-primary hover:underline">Runs</Link> tab.
-          </p>
-        </div>
-      )}
     </div>
   );
 }

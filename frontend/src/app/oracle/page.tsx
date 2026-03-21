@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
+import Image from 'next/image';
 import { gql, useQuery } from '@apollo/client';
 import { PageLayout } from '@/components/layout';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { formatDateUTC, formatTinybarsToHbar, formatResolverRunIdToDate } from '@/lib/utils';
+import { ResolutionOverviewVisuals } from '@/components/oracle/ResolutionOverviewVisuals';
+import { BucketFuturisticCard } from '@/components/oracle/BucketFuturisticCard';
 import {
   LayoutDashboard,
   ListTodo,
@@ -63,6 +64,21 @@ const GET_BUCKETS = gql`
   }
 `;
 
+const GET_OVERVIEW_CHARTS = gql`
+  query ResolutionOverviewCharts {
+    bets(first: 2000, orderBy: timestamp, orderDirection: desc) {
+      timestamp
+      won
+      finalized
+    }
+    fees(first: 80, orderBy: timestamp, orderDirection: desc) {
+      id
+      amount
+      timestamp
+    }
+  }
+`;
+
 type TabId = 'overview' | 'unresolved' | 'buckets' | 'runs';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
@@ -75,7 +91,6 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
 export default function OraclePage() {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [expandedTs, setExpandedTs] = useState<Set<string>>(new Set());
-  const [expandedBuckets, setExpandedBuckets] = useState<Set<string>>(new Set());
   const [runs, setRuns] = useState<{ runId: string; name: string }[]>([]);
   const [selectedRun, setSelectedRun] = useState<object | null>(null);
   const [jsonModalOpen, setJsonModalOpen] = useState(false);
@@ -87,10 +102,17 @@ export default function OraclePage() {
 
   const { data: unresolvedData, loading: loadingUnresolved, refetch: refetchUnresolved } = useQuery(GET_UNRESOLVED);
   const { data: bucketsData, loading: loadingBuckets, refetch: refetchBuckets } = useQuery(GET_BUCKETS);
+  const { data: overviewChartsData, loading: loadingOverviewCharts, refetch: refetchOverviewCharts } = useQuery(
+    GET_OVERVIEW_CHARTS,
+    { skip: activeTab !== 'overview' }
+  );
 
   const unresolvedBets = unresolvedData?.bets ?? [];
   const buckets = bucketsData?.buckets ?? [];
   const unresolvedBuckets = buckets.filter((b: { aggregationComplete: boolean }) => !b.aggregationComplete);
+  const overviewBets = overviewChartsData?.bets ?? [];
+  const overviewFees = overviewChartsData?.fees ?? [];
+
   const uniqueTimestamps = useMemo((): number[] => {
     const timestamps = unresolvedBets.map((b: { targetTimestamp: string }) => Number(b.targetTimestamp)) as number[];
     return Array.from(new Set(timestamps)).sort((a, b) => a - b);
@@ -142,28 +164,24 @@ export default function OraclePage() {
     });
   };
 
-  const toggleBucket = (id: string) => {
-    setExpandedBuckets((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  const refetchAll = useCallback(() => {
+    void refetchUnresolved();
+    void refetchBuckets();
+    if (activeTab === 'overview') void refetchOverviewCharts();
+    fetch('/api/oracle/runs')
+      .then((r) => r.json())
+      .then((d) => setRuns(d.runs ?? []));
+    fetch('/api/oracle/price')
+      .then((r) => r.json())
+      .then(setPrice);
+  }, [activeTab, refetchUnresolved, refetchBuckets, refetchOverviewCharts]);
 
-  const refetchAll = () => {
-    refetchUnresolved();
-    refetchBuckets();
-    fetch('/api/oracle/runs').then((r) => r.json()).then((d) => setRuns(d.runs ?? []));
-    fetch('/api/oracle/price').then((r) => r.json()).then(setPrice);
-  };
-
-  const cardClass = 'rounded-xl border border-white/[0.08] bg-background overflow-hidden';
+  const cardClass = 'bucket-futuristic-card rounded-xl border border-white/[0.1] overflow-hidden';
 
   return (
     <PageLayout maxWidth="xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h1 className="text-xl font-bold text-foreground">Oracle Dashboard</h1>
+        <h1 className="text-xl font-bold text-foreground">Resolution Dashboard</h1>
         <button
           type="button"
           className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-primary/85"
@@ -194,40 +212,67 @@ export default function OraclePage() {
       </div>
 
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className={cardClass + ' p-4'}>
-            <p className="text-xs text-muted-foreground">Bets unresolved</p>
-            <p className="text-2xl font-bold text-foreground tabular-nums mt-1">
-              {loadingUnresolved ? '…' : unresolvedBets.length}
-            </p>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className={cardClass + ' p-4'}>
+              <p className="text-xs text-muted-foreground">Bets unresolved</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                {loadingUnresolved ? '…' : unresolvedBets.length}
+              </p>
+            </div>
+            <div className={cardClass + ' p-4'}>
+              <p className="text-xs text-muted-foreground">Buckets unresolved</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                {loadingBuckets ? '…' : unresolvedBuckets.length}
+              </p>
+            </div>
+            <div className={cardClass + ' p-4'}>
+              <p className="text-xs text-muted-foreground">Current HBAR price</p>
+              <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Image
+                  src="/hedera-hbar-logo.svg"
+                  alt=""
+                  width={16}
+                  height={16}
+                  className="size-4 opacity-90"
+                  aria-hidden
+                />
+                <span>{price.coinGecko != null ? `$${price.coinGecko.toFixed(4)}` : '—'}</span>
+                {price.oracle != null && (
+                  <span className="ml-1 text-xs text-muted-foreground">
+                    Oracle: ${price.oracle.toFixed(4)}
+                  </span>
+                )}
+              </p>
+            </div>
+            <div className={cardClass + ' p-4'}>
+              <p className="text-xs text-muted-foreground">Last resolver run</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">
+                {runs.length > 0 ? formatResolverRunIdToDate(runs[0].runId) : '—'}
+              </p>
+            </div>
           </div>
-          <div className={cardClass + ' p-4'}>
-            <p className="text-xs text-muted-foreground">Buckets unresolved</p>
-            <p className="text-2xl font-bold text-foreground tabular-nums mt-1">
-              {loadingBuckets ? '…' : unresolvedBuckets.length}
-            </p>
-          </div>
-          <div className={cardClass + ' p-4'}>
-            <p className="text-xs text-muted-foreground">Last resolver run</p>
-            <p className="text-sm font-semibold text-foreground mt-1">
-              {runs.length > 0 ? formatResolverRunIdToDate(runs[0].runId) : '—'}
-            </p>
-          </div>
-          <div className={cardClass + ' p-4'}>
-            <p className="text-xs text-muted-foreground">Current HBAR price</p>
-            <p className="text-sm font-semibold text-foreground mt-1">
-              {price.coinGecko != null ? `$${price.coinGecko.toFixed(4)}` : '—'}
-              {price.oracle != null && (
-                <span className="text-muted-foreground text-xs ml-2">Oracle: ${price.oracle.toFixed(4)}</span>
-              )}
-            </p>
-          </div>
+
+          <ResolutionOverviewVisuals
+            buckets={buckets}
+            bets={overviewBets}
+            fees={overviewFees}
+            loading={loadingOverviewCharts || loadingBuckets}
+          />
         </div>
       )}
 
       {activeTab === 'unresolved' && (
-        <div className={cardClass}>
-          <div className="divide-y divide-white/[0.08] max-h-[600px] overflow-y-auto">
+        <div className={cardClass + ' no-hover-transform relative'}>
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.28]"
+            aria-hidden
+            style={{
+              backgroundImage:
+                'radial-gradient(circle at 22% 18%, hsl(var(--primary) / 0.08), transparent 38%), radial-gradient(circle at 82% 68%, hsl(0 0% 100% / 0.05), transparent 44%)',
+            }}
+          />
+          <div className="relative divide-y divide-white/[0.08] max-h-[600px] overflow-y-auto">
             {loadingUnresolved ? (
               <div className="p-8 text-center text-muted-foreground text-sm">Loading…</div>
             ) : uniqueTimestamps.length === 0 ? (
@@ -288,58 +333,61 @@ export default function OraclePage() {
       )}
 
       {activeTab === 'buckets' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto">
+        <div className="space-y-4">
           {loadingBuckets ? (
-            <div className="col-span-full p-8 text-center text-muted-foreground text-sm">Loading…</div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="h-40 animate-pulse rounded-xl border border-white/[0.08] bg-white/[0.04]"
+                />
+              ))}
+            </div>
           ) : buckets.length === 0 ? (
-            <div className="col-span-full p-8 text-center text-muted-foreground text-sm">No buckets.</div>
+            <div className="p-8 text-center text-sm text-muted-foreground">No buckets.</div>
           ) : (
-            buckets.map((b: { id: string; totalBets: number; totalStaked: string; nextProcessIndex: number; aggregationComplete: boolean }) => {
-              const expanded = expandedBuckets.has(b.id);
-              return (
-                <div key={b.id} className={cardClass}>
-                  <button
-                    type="button"
-                    className="w-full flex items-center gap-3 p-4 text-left hover:bg-white/[0.03] transition-colors"
-                    onClick={() => toggleBucket(b.id)}
-                  >
-                    {expanded ? <ChevronDown className="size-4 text-muted-foreground shrink-0" /> : <ChevronRight className="size-4 text-muted-foreground shrink-0" />}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-foreground">Bucket {b.id}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {b.totalBets} bets · {formatTinybarsToHbar(b.totalStaked)} HBAR staked
-                      </p>
-                    </div>
-                    {b.aggregationComplete ? (
-                      <span className="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-md font-medium shrink-0">Complete</span>
-                    ) : (
-                      <span className="text-xs bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-md font-medium shrink-0">Incomplete</span>
-                    )}
-                  </button>
-                  {expanded && (
-                    <div className="px-4 pb-4 pt-0 border-t border-white/[0.08]">
-                      <dl className="grid grid-cols-2 gap-2 text-sm pt-3">
-                        <dt className="text-xs text-muted-foreground">Total staked</dt>
-                        <dd className="text-xs font-medium text-foreground">{formatTinybarsToHbar(b.totalStaked)} HBAR</dd>
-                        <dt className="text-xs text-muted-foreground">Bets count</dt>
-                        <dd className="text-xs font-medium text-foreground">{b.totalBets}</dd>
-                        <dt className="text-xs text-muted-foreground">Next process index</dt>
-                        <dd className="text-xs font-mono text-foreground">{b.nextProcessIndex}</dd>
-                        <dt className="text-xs text-muted-foreground">Status</dt>
-                        <dd className="text-xs font-medium text-foreground">{b.aggregationComplete ? 'Complete' : 'Incomplete'}</dd>
-                      </dl>
-                    </div>
-                  )}
-                </div>
-              );
-            })
+            <div className="relative max-h-[min(70vh,720px)] overflow-y-auto pr-1">
+              <div
+                className="pointer-events-none absolute inset-0 opacity-[0.35]"
+                aria-hidden
+                style={{
+                  backgroundImage:
+                    'radial-gradient(circle at 20% 20%, hsl(var(--primary) / 0.08), transparent 40%), radial-gradient(circle at 80% 60%, hsl(var(--primary) / 0.06), transparent 45%)',
+                }}
+              />
+              <div className="relative grid grid-cols-1 gap-4 md:grid-cols-2">
+                {buckets.map(
+                  (
+                    b: {
+                      id: string;
+                      totalBets: number;
+                      totalStaked: string;
+                      nextProcessIndex: number;
+                      aggregationComplete: boolean;
+                      totalWinningWeight: string;
+                    },
+                    i: number
+                  ) => (
+                    <BucketFuturisticCard key={b.id} bucket={b} index={i} />
+                  )
+                )}
+              </div>
+            </div>
           )}
         </div>
       )}
 
       {activeTab === 'runs' && (
-        <div className={cardClass}>
-          <div className="overflow-x-auto p-4">
+        <div className={cardClass + ' no-hover-transform relative'}>
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.28]"
+            aria-hidden
+            style={{
+              backgroundImage:
+                'radial-gradient(circle at 20% 12%, hsl(var(--primary) / 0.08), transparent 42%), radial-gradient(circle at 80% 60%, hsl(0 0% 100% / 0.05), transparent 45%)',
+            }}
+          />
+          <div className="relative overflow-x-auto p-4">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-muted-foreground border-b border-white/[0.08]">
