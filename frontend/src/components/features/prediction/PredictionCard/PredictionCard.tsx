@@ -422,18 +422,12 @@ export function PredictionCard({ className }: PredictionCardProps) {
 
   return (
     <Card className={st.card + (className ? ` ${className}` : '')}>
-      {/* Header: token selector + title + price */}
+      {/* Header: token summary + title + price */}
       <div className={st.header}>
         <div className="flex items-center justify-between mb-4">
-          <div className={st.tokenSelectorWrap}>
-            <button type="button" className={st.tokenActive}>
-              <Image src="/hedera.svg" alt="HBAR" width={16} height={16} className="rounded-full" />
-              HBAR
-            </button>
-            <button type="button" className={st.tokenDisabled} disabled>
-              <span className={st.tokenPlaceholderIcon}>?</span>
-              Soon
-            </button>
+          <div className="inline-flex items-center gap-2 rounded-lg border border-white/[0.08] bg-[hsl(0_0%_7%)] px-3 py-1.5">
+            <Image src="/hedera-hbar-logo.svg" alt="HBAR" width={16} height={16} className="rounded-full" />
+            <span className="text-sm font-medium text-foreground">HBAR</span>
           </div>
           <span className={st.activeBadge}>{activeBets} active</span>
         </div>
