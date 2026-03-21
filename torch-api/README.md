@@ -1,4 +1,4 @@
-# Torch API (Option A — Read-only)
+# Torch API
 
 Token-protected read-only HTTP API that serves run artifacts from the bet bot and oracle resolver. Intended to run on Hetzner; dashboard on Vercel proxies to it server-side (token never in browser).
 

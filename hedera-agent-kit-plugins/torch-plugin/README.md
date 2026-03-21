@@ -2,7 +2,7 @@
 
 This plugin was built for the Torch hackathon bot to enable deterministic `TorchPredictionMarket.placeBet(...)` transaction execution using Hedera Agent Kit tooling.
 
-It is intentionally minimal: the 7-day scheduling loop and the LLM prompting remain in your bot runner; this plugin provides the single tool needed to execute (or parse-only) the `placeBet` step.
+It is intentionally minimal: the 7-day scheduling loop and the LLM prompting remain in your bot runner; this plugin provides the single tool needed to execute the `placeBet` step.
 
 ## Installation
 
@@ -45,7 +45,7 @@ This plugin exposes one deterministic tool:
 
 | Tool Name | Description | Usage |
 |---|---|---|
-| `TORCH_PLACE_BET_TOOL` | Builds and submits the `placeBet(targetTimestamp, priceMin, priceMax)` contract call (payable HBAR), or runs parse-only mode. Input must include the exact forecast line in the format `Min: x, Max: y`. | Provide tool inputs exactly as documented below; use `execute=false` for dry-runs/validation. |
+| `TORCH_PLACE_BET_TOOL` | Builds and submits the `placeBet(targetTimestamp, priceMin, priceMax)` contract call (payable HBAR). Input must include the exact forecast line in the format `Min: x, Max: y`. | Provide tool inputs exactly as documented below; use `execute=false` for dry-runs/validation. |
 
 ### Tool inputs
 
@@ -70,12 +70,8 @@ The tool returns a deterministic JSON object including:
 - If `execute=true`:
   - `txId`, `status`, and `receipt`
 
-## Notes
 
-- This plugin does **not** implement the daily “next 7 days” scheduling loop. That scheduling remains in your bot runner (systemd timer + runner logic).
-- The intent is to keep the tool deterministic given the LLM’s `forecastRaw` string, so tx execution stays aligned with your existing `parseMinMax()` and `betPolicy` behavior.
-
-## Best Practices (implemented)
+## Guidelines
 
 - Parameter validation: the tool input is validated using Zod before any execution.
 - Deterministic interface: the only free-form text input is `forecastRaw`, and the tool strictly parses it using the expected `Min: x, Max: y` format.

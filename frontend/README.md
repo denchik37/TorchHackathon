@@ -1,174 +1,135 @@
 # Torch Frontend
 
-A modern Next.js frontend for the Torch cryptocurrency prediction market platform, built with Tailwind CSS, Radix UI, and Hedera wallet tooling (`@buidlerlabs/hashgraph-react-wallets` + WalletConnect).
+A modern Next.js frontend for Torch prediction markets on Hedera, built with Tailwind CSS, Radix UI, Apollo GraphQL, and Hedera wallet tooling (`@buidlerlabs/hashgraph-react-wallets` + WalletConnect).
 
 ## End User Features
 
-Torch provides a comprehensive prediction market interface with the following capabilities:
+Torch currently provides:
 
 | Feature | Description |
-|---------|-------------|
-| 🎯 **Place a bet** | Predict HBAR price ranges with custom time horizons |
-| 📊 **View signals** | Real-time price forecasting and market visualization |
-| 📈 **View activity** | Track bet history, status, and performance |
-| 🏆 **Claim rewards** | Collect winnings from successful predictions |
-| ⚙️ **Admin panel** | Batch processing and bet resolution (Clerk authentication) |
+|---|---|
+| 🧭 **Market-first landing** | Home page shows market rows (HBAR + SAUCE) with live price metrics |
+| 🎯 **HBAR betting flow** | Click HBAR row to open full prediction card and place bets |
+| 📊 **Forecast + history tabs** | KDE forecast view and bet history integrated in prediction UI |
+| 🧾 **Resolution dashboard** | `/oracle` with Overview, Unresolved, Buckets, Resolver Runs |
+| 👛 **Wallet-native UX** | Connect wallet, view balance, submit contract transactions |
+| ⚙️ **Admin tools** | `/admin` panel remains available for operator workflows |
+
+## Current Market Availability
+
+- **HBAR**: active market (fully functional prediction flow).
+- **SAUCE**: listed with live price, marked **Coming soon** (not clickable for betting).
 
 ## Technical Features
 
-- 💰 **Wallet Integration** - HashPack (primary), WalletConnect, and other Hedera wallets
-- 📊 **Interactive KDE Charts** - Kernel Density Estimation visualization with confidence hover states
-- 🎯 **Price Range Selection** - Interactive histogram for bet distribution visualization
-- 📱 **Responsive Design** - Mobile-first design with Tailwind CSS
-- ⚡ **Modern Stack** - Next.js 14, TypeScript, and modern React patterns
-- 🎭 **Accessible UI** - Built with Radix UI primitives for accessibility
-- 💲 **Real-time HBAR Prices** - CoinGecko API integration with 30-second updates
-- 🔔 **Toast Notifications** - Real-time feedback for user actions
+- 💰 **Hedera wallet integration** (HashPack primary + WalletConnect ecosystem)
+- 📉 **Interactive prediction UI** with range selection and quality multipliers
+- 📊 **KDE charting** for forecast visualization
+- 🔗 **Subgraph-backed views** via Apollo GraphQL queries
+- ⚡ **Live market pricing**:
+  - HBAR via on-chain feed hook
+  - SAUCE via CoinGecko simple-price endpoint
+- 🎨 **Dark glass design system** with custom global tokens and polished hover states
 
 ## Tech Stack
 
-- **Framework**: Next.js 14 with App Router
-- **Styling**: Tailwind CSS with custom design system
-- **UI Components**: Radix UI + shadcn/ui
-- **Wallet Integration**: @buidlerlabs/hashgraph-react-wallets (HashPack + WalletConnect)
-- **Charts**: Recharts for data visualization
-- **Authentication**: Clerk (admin panel)
-- **Data**: Apollo Client + GraphQL
+- **Framework**: Next.js 14 (App Router)
 - **Language**: TypeScript
+- **Styling**: Tailwind CSS + custom tokens/utilities
+- **UI Components**: Radix UI + shadcn/ui
+- **Data Layer**: Apollo Client + GraphQL
+- **Wallet Layer**: `@buidlerlabs/hashgraph-react-wallets`
+- **Charts**: Recharts
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 18+
-- npm or yarn
+- npm
 
 ### Installation
 
-1. **Install dependencies**:
+1. Install dependencies:
 
    ```bash
    npm install
    ```
 
-2. **Set up environment variables**:
-   Create a `.env.local` file in the root directory:
+2. Create `frontend/.env.local`:
 
    ```env
    NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=your_wallet_connect_project_id
+   NEXT_PUBLIC_CONTRACT_ID=0.0.xxxxx
+   NEXT_PUBLIC_SUBGRAPH_URL=https://your-subgraph-endpoint
    ```
 
-3. **Run the development server**:
+3. Start the dev server:
 
    ```bash
    npm run dev
    ```
 
-4. **Open your browser**:
-   Navigate to [http://localhost:3000](http://localhost:3000)
+4. Open [http://localhost:3000](http://localhost:3000)
+
+### Environment Notes
+
+- `NEXT_PUBLIC_CONTRACT_ID` is required for contract write actions (placing bets).
+- `NEXT_PUBLIC_SUBGRAPH_URL` powers oracle/subgraph-backed market views.
 
 ## Project Structure
 
-```
+```text
 src/
-├── app/                    # Next.js App Router
-│   ├── globals.css        # Global styles and CSS variables
-│   ├── layout.tsx         # Root layout with providers
-│   └── page.tsx           # Main page component
-├── components/            # React components
-│   ├── ui/               # Reusable UI components (shadcn/ui)
-│   ├── header.tsx        # Main header with navigation
-│   ├── prediction-card.tsx # Main prediction interface
-│   ├── kde-chart.tsx     # Interactive KDE visualization
-│   ├── price-range-selector.tsx # Price range selection
-│   ├── bet-history.tsx   # Bet history table
-│   ├── hbar-price-display.tsx # HBAR price component
-│   └── wallet-selector.tsx # Wallet connection component
-├── lib/                  # Utility functions and configurations
-│   ├── utils.ts          # Common utility functions
-│   ├── apolloClient.ts   # GraphQL client configuration
-│   ├── coingecko.ts      # HBAR price API integration
-│   └── types.ts          # TypeScript type definitions
-└── types/                # TypeScript type definitions
+├── app/
+│   ├── page.tsx                      # Market rows landing (HBAR + SAUCE)
+│   ├── oracle/page.tsx               # Resolution dashboard
+│   ├── my-bets/page.tsx              # User bets page
+│   ├── admin/page.tsx                # Admin page
+│   ├── globals.css                   # Global styling + dark/glass utilities
+│   └── layout.tsx                    # Root layout/providers
+├── components/
+│   ├── features/prediction/          # PredictionCard and related modules
+│   ├── layout/                       # Header + page layout components
+│   ├── oracle/                       # Oracle-specific UI cards/charts
+│   └── ui/                           # Shared UI primitives
+├── hooks/
+│   └── useHbarPrice.ts               # Live HBAR pricing hook
+└── lib/
+    ├── apolloClient.ts
+    ├── coingecko.ts
+    ├── motion.ts
+    └── utils.ts
 ```
 
 ## Key Components
 
-### PredictionCard
+### Home Market Rows (`src/app/page.tsx`)
 
-The main interface component that contains:
+- Displays market rows styled as glassy table-like cards.
+- HBAR row is clickable and opens the active prediction flow.
+- SAUCE row shows live price and 24h change, but remains non-interactive.
 
-- Bet placement interface
-- Interactive price range selector
-- KDE forecast visualization
-- Bet history table
+### PredictionCard (`src/components/features/prediction/PredictionCard/PredictionCard.tsx`)
 
-### KDEChart
+- Main prediction experience for HBAR.
+- Includes bet flow, forecast tab, and history tab.
 
-Interactive Kernel Density Estimation chart that:
+### Oracle Dashboard (`src/app/oracle/page.tsx`)
 
-- Shows price forecasts over time
-- Displays confidence percentages on hover
-- Uses Recharts for smooth animations
-
-### PriceRangeSelector
-
-Interactive histogram component that:
-
-- Visualizes bet distribution
-- Allows range selection with visual feedback
-- Shows current price indicator
-
-### Header
-
-Navigation header with:
-
-- Torch branding
-- Wallet connection status
-- HBAR balance display
-- Account address with copy functionality
-- Website link
-
-## Wallet Integration
-
-The app uses Hedera-specific wallet integration:
-
-- **Primary Wallet**: HashPack (recommended)
-- **Additional Support**: WalletConnect, other Hedera-compatible wallets
-- **Network**: Hedera Mainnet (production ready)
-- **Features**: Balance display, transaction signing, bet placement, reward claiming
-
-## Styling
-
-The app uses a custom design system built on Tailwind CSS:
-
-- **Colors**: Custom torch color palette (purple, green, red, orange, blue)
-- **Design**: Dark theme with consistent design tokens and spacing
-- **Components**: Reusable UI components with Tailwind classes
+- Includes:
+  - Overview metrics
+  - Unresolved bets view
+  - Bucket cards
+  - Resolver run inspection
 
 ## Available Scripts
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+- `npm run dev` - start development server
+- `npm run build` - build for production
+- `npm run start` - run production build
+- `npm run lint` - run ESLint
 
 ## License
 
-Torch is part of the **Origins and Ascension hackathons**. This project is licensed under the MIT License.
-
-## Planned Features
-
-- 🎨 **Theme support** - Dark/light mode toggle (component exists but not implemented in UI)
-- 📱 **Mobile optimization** - Enhanced mobile experience
-- 🤖 **AI agent integration** - Automated prediction strategies
-- 📊 **Advanced analytics** - Detailed performance metrics
-- 🔔 **Push notifications** - Real-time bet status updates
+Torch is part of the Origins/Ascension hackathon workstream and follows the repository license.

@@ -1,5 +1,5 @@
 [Unit]
-Description=Torch read-only API (Option A)
+Description=Torch read-only API
 After=network.target
 
 [Service]
