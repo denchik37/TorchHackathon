@@ -27,8 +27,7 @@
   }
 
   .dark {
-    /* Charcoal Black (#111111) - Primary background */
-    --background: 0 0% 7%;
+    --background: 228 8% 6%;
     --foreground: 0 0% 92%;
 
     /* Dark Slate Gray (#1C1C1E) - Main content card */

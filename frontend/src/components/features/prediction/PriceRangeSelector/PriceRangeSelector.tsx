@@ -182,6 +182,7 @@ export function PriceRangeSelector({
     (value: number) => {
       const newMin = Math.min(value, selectedMax - 0.0001);
       setSelectedMin(newMin);
+      setMinInputValue('');
       onRangeChange(newMin, selectedMax);
     },
     [onRangeChange, selectedMax]
@@ -191,6 +192,7 @@ export function PriceRangeSelector({
     (value: number) => {
       const newMax = Math.max(value, selectedMin + 0.0001);
       setSelectedMax(newMax);
+      setMaxInputValue('');
       onRangeChange(selectedMin, newMax);
     },
     [onRangeChange, selectedMin]
@@ -241,12 +243,12 @@ export function PriceRangeSelector({
 
   return (
     <div className={cn(priceRangeSelectorStyles.root, className)}>
-      <div className="flex justify-between items-center flex-wrap gap-2">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <div className={priceRangeSelectorStyles.stepBadge}>2</div>
-          <h3 className={priceRangeSelectorStyles.stepTitle}>Select price range</h3>
+          <h3 className={priceRangeSelectorStyles.stepTitle}>Price range</h3>
         </div>
-        <span className="text-sm text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           Total volume: {totalVolumeHbar.toLocaleString(undefined, { maximumFractionDigits: 2 })} HBAR
         </span>
       </div>

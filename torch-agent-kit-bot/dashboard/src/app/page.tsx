@@ -125,10 +125,10 @@ export default function OverviewPage() {
   if (loading) {
     return (
       <div className={dashboardStyles.page}>
-        <div className="h-8 w-48 rounded bg-card animate-pulse" />
+        <div className="h-8 w-48 rounded bg-white/[0.06] animate-pulse" />
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className={`${dashboardStyles.kpiCard} h-24 animate-pulse rounded-xl border border-border`} />
+            <div key={i} className="h-24 animate-pulse rounded-xl border border-white/[0.08] bg-white/[0.06]" />
           ))}
         </div>
       </div>
@@ -139,6 +139,8 @@ export default function OverviewPage() {
   const attempted = lastRun ? lastRun.successCount + lastRun.dryRunCount + lastRun.skippedCount : 0;
   const succeeded = lastRun?.successCount ?? 0;
 
+  const cardClass = "rounded-xl border border-white/[0.08] bg-background p-4 sm:p-5";
+
   return (
     <div className={dashboardStyles.page}>
       <header className={dashboardStyles.pageHeader}>
@@ -146,7 +148,7 @@ export default function OverviewPage() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <div className={cardClass}>
           <p className={dashboardStyles.kpiLabel}>Last run</p>
           <p className={dashboardStyles.kpiValue}>
             {lastRun ? formatDateTimeUtc(lastRun.timestampUtc) : "—"}
@@ -155,13 +157,13 @@ export default function OverviewPage() {
             {lastRun ? `${lastRun.successCount} ok, ${lastRun.failedCount} failed` : "No runs yet"}
           </p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <div className={cardClass}>
           <p className={dashboardStyles.kpiLabel}>Bets attempted / succeeded</p>
           <p className={dashboardStyles.kpiValue}>
             {lastRun ? `${attempted} / ${succeeded}` : "—"}
           </p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <div className={cardClass}>
           <p className={dashboardStyles.kpiLabel}>Next target (12:00 UTC)</p>
           <p className={dashboardStyles.kpiValue}>
             {health?.nextTargetDate
@@ -172,10 +174,10 @@ export default function OverviewPage() {
       </div>
 
       {account && (
-        <div className="rounded-xl border border-border bg-card p-4 sm:p-5 mb-8">
+        <div className={cardClass + " mb-8"}>
           <h2 className={dashboardStyles.kpiLabel}>Torch Bot</h2>
           <div className="mt-3 flex items-center gap-2">
-            <Coins className="w-5 h-5 text-primary flex-shrink-0" />
+            <Coins className="size-5 text-primary flex-shrink-0" />
             <span className="text-xl font-semibold text-foreground tabular-nums">
               {Number(account.balance?.hbar ?? 0).toLocaleString("en-GB", {
                 minimumFractionDigits: 2,
@@ -189,20 +191,20 @@ export default function OverviewPage() {
             <button
               type="button"
               onClick={handleCopyAccount}
-              className="p-2 rounded-lg text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
+              className="p-2 rounded-lg text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors"
               aria-label={copied ? "Copied" : "Copy address"}
             >
-              {copied ? <Check className="w-4 h-4 text-primary" /> : <Copy className="w-4 h-4" />}
+              {copied ? <Check className="size-4 text-primary" /> : <Copy className="size-4" />}
             </button>
             {hashscanUrl && (
               <a
                 href={hashscanUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 rounded-lg text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
+                className="p-2 rounded-lg text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors"
                 aria-label="View on HashScan"
               >
-                <ExternalLink className="w-4 h-4" />
+                <ExternalLink className="size-4" />
               </a>
             )}
           </div>
@@ -212,10 +214,10 @@ export default function OverviewPage() {
       {runs.length === 0 ? (
         <div className={dashboardStyles.emptyState}>
           No runs yet — run the bot first (e.g.{" "}
-          <code className="bg-card px-2 py-1 rounded border border-border font-mono text-xs">npm run daily</code>).
+          <code className="bg-[hsl(0_0%_7%)] px-2 py-1 rounded border border-white/[0.08] font-mono text-xs">npm run daily</code>).
         </div>
       ) : (
-        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <div className={cardClass}>
           <h2 className={dashboardStyles.kpiLabel + " mb-4"}>Recent runs</h2>
           <p className="text-sm text-muted-foreground">
             View full history in the <Link href="/runs" className="text-primary hover:underline">Runs</Link> tab.

@@ -701,7 +701,7 @@ export const KDEChart = forwardRef<KDEChartRef, KDEChartProps>(
             )}
           </div>
         </div>
-        <div ref={chartContainerRef} className="w-full h-full relative rounded-xl overflow-hidden border border-border bg-card/30" />
+        <div ref={chartContainerRef} className="w-full h-full relative rounded-md overflow-hidden" />
 
         {showControls && (
           <KDEChartModal

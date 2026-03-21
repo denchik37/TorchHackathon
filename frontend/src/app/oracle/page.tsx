@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { gql, useQuery } from '@apollo/client';
-import { Header } from '@/components/layout';
+import { PageLayout } from '@/components/layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatDateUTC, formatTinybarsToHbar, formatResolverRunIdToDate } from '@/lib/utils';
@@ -66,10 +66,10 @@ const GET_BUCKETS = gql`
 type TabId = 'overview' | 'unresolved' | 'buckets' | 'runs';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
-  { id: 'unresolved', label: 'Unresolved', icon: <ListTodo className="w-4 h-4" /> },
-  { id: 'buckets', label: 'Buckets', icon: <Layers className="w-4 h-4" /> },
-  { id: 'runs', label: 'Resolver Runs', icon: <History className="w-4 h-4" /> },
+  { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="size-4" /> },
+  { id: 'unresolved', label: 'Unresolved', icon: <ListTodo className="size-4" /> },
+  { id: 'buckets', label: 'Buckets', icon: <Layers className="size-4" /> },
+  { id: 'runs', label: 'Resolver Runs', icon: <History className="size-4" /> },
 ];
 
 export default function OraclePage() {
@@ -158,254 +158,242 @@ export default function OraclePage() {
     fetch('/api/oracle/price').then((r) => r.json()).then(setPrice);
   };
 
+  const cardClass = 'rounded-xl border border-white/[0.08] bg-background overflow-hidden';
+
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-6xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <h1 className="text-2xl font-semibold text-foreground">Torch Oracle Dashboard</h1>
-          <Button
-            size="sm"
-            className="rounded-lg gap-2 bg-primary text-white hover:bg-primary/90"
-            onClick={refetchAll}
+    <PageLayout maxWidth="xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <h1 className="text-xl font-bold text-foreground">Oracle Dashboard</h1>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-primary/85"
+          onClick={refetchAll}
+        >
+          <RefreshCw className="size-3.5" />
+          Refresh
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 rounded-lg bg-[hsl(0_0%_7%)] p-0.5 border border-white/[0.06] mb-6">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              activeTab === tab.id
+                ? 'bg-primary text-white'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            onClick={() => setActiveTab(tab.id)}
           >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </Button>
-        </div>
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-        <div className="flex flex-wrap gap-2 border-b border-border pb-2 mb-6">
-          {TABS.map((tab) => (
-            <Button
-              key={tab.id}
-              variant={activeTab === tab.id ? 'default' : 'ghost'}
-              size="sm"
-              className={`rounded-lg gap-2 ${activeTab === tab.id ? 'text-white hover:bg-primary/90' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.icon}
-              {tab.label}
-            </Button>
-          ))}
-        </div>
-
-        {activeTab === 'overview' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="rounded-xl border border-border bg-card">
-                <CardContent className="p-4">
-                  <p className="text-sm text-muted-foreground">Bets unresolved</p>
-                  <p className="text-2xl font-semibold text-foreground">
-                    {loadingUnresolved ? '…' : unresolvedBets.length}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card className="rounded-xl border border-border bg-card">
-                <CardContent className="p-4">
-                  <p className="text-sm text-muted-foreground">Buckets unresolved</p>
-                  <p className="text-2xl font-semibold text-foreground">
-                    {loadingBuckets ? '…' : unresolvedBuckets.length}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card className="rounded-xl border border-border bg-card">
-                <CardContent className="p-4">
-                  <p className="text-sm text-muted-foreground">Last resolver run</p>
-                  <p className="text-lg font-medium text-foreground">
-                    {runs.length > 0 ? formatResolverRunIdToDate(runs[0].runId) : '—'}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card className="rounded-xl border border-border bg-card">
-                <CardContent className="p-4">
-                  <p className="text-sm text-muted-foreground">Current HBAR price</p>
-                  <p className="text-lg font-medium text-foreground">
-                    {price.coinGecko != null ? `$${price.coinGecko.toFixed(4)}` : '—'}
-                    {price.oracle != null && (
-                      <span className="text-muted-foreground text-sm ml-2">Oracle: ${price.oracle.toFixed(4)}</span>
-                    )}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+      {activeTab === 'overview' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className={cardClass + ' p-4'}>
+            <p className="text-xs text-muted-foreground">Bets unresolved</p>
+            <p className="text-2xl font-bold text-foreground tabular-nums mt-1">
+              {loadingUnresolved ? '…' : unresolvedBets.length}
+            </p>
           </div>
-        )}
+          <div className={cardClass + ' p-4'}>
+            <p className="text-xs text-muted-foreground">Buckets unresolved</p>
+            <p className="text-2xl font-bold text-foreground tabular-nums mt-1">
+              {loadingBuckets ? '…' : unresolvedBuckets.length}
+            </p>
+          </div>
+          <div className={cardClass + ' p-4'}>
+            <p className="text-xs text-muted-foreground">Last resolver run</p>
+            <p className="text-sm font-semibold text-foreground mt-1">
+              {runs.length > 0 ? formatResolverRunIdToDate(runs[0].runId) : '—'}
+            </p>
+          </div>
+          <div className={cardClass + ' p-4'}>
+            <p className="text-xs text-muted-foreground">Current HBAR price</p>
+            <p className="text-sm font-semibold text-foreground mt-1">
+              {price.coinGecko != null ? `$${price.coinGecko.toFixed(4)}` : '—'}
+              {price.oracle != null && (
+                <span className="text-muted-foreground text-xs ml-2">Oracle: ${price.oracle.toFixed(4)}</span>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
 
-        {activeTab === 'unresolved' && (
-          <Card className="rounded-xl border border-border bg-card overflow-hidden">
-            <CardContent className="p-0">
-              <div className="divide-y divide-border max-h-[600px] overflow-y-auto">
-                {loadingUnresolved ? (
-                  <div className="p-8 text-center text-muted-foreground">Loading…</div>
-                ) : uniqueTimestamps.length === 0 ? (
-                  <div className="p-8 text-center text-muted-foreground">No unresolved bets.</div>
-                ) : (
-                  uniqueTimestamps.map((ts) => {
-                    const tsStr = String(ts);
-                    const expanded = expandedTs.has(tsStr);
-                    const betsForTs = unresolvedBets.filter((b: { targetTimestamp: string }) => Number(b.targetTimestamp) === ts);
-                    const bucketIds = Array.from(new Set(betsForTs.map((b: { bucket: number }) => b.bucket)));
-                    return (
-                      <div key={ts}>
-                        <button
-                          type="button"
-                          className="w-full flex items-center gap-2 p-4 text-left hover:bg-muted/20 transition-colors"
-                          onClick={() => toggleTs(tsStr)}
-                        >
-                          {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                          <span className="font-mono text-sm text-foreground">{formatDateUTC(ts)}</span>
-                          <span className="text-muted-foreground text-sm">{betsForTs.length} bet(s)</span>
-                          <span className="text-muted-foreground text-sm">{bucketIds.length} bucket(s)</span>
-                          {isEligible(ts) ? (
-                            <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded font-medium">Eligible now</span>
-                          ) : (
-                            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">Not yet</span>
-                          )}
-                        </button>
-                        {expanded && (
-                          <div className="pl-6 pr-4 pb-4">
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="text-muted-foreground">
-                                  <th className="text-left py-2">Bet ID</th>
-                                  <th className="text-left py-2">Stake</th>
-                                  <th className="text-left py-2">Min / Max</th>
-                                  <th className="text-left py-2">Bucket</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {betsForTs.map((bet: { id: string; stake: string; priceMin: string; priceMax: string; bucket: number }) => (
-                                  <tr key={bet.id} className="border-t border-border">
-                                    <td className="py-2 font-mono">{bet.id}</td>
-                                    <td className="py-2">{formatTinybarsToHbar(bet.stake)} HBAR</td>
-                                    <td className="py-2">${Number(formatTinybarsToHbar(bet.priceMin)).toFixed(4)} / ${Number(formatTinybarsToHbar(bet.priceMax)).toFixed(4)}</td>
-                                    <td className="py-2">{bet.bucket}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {activeTab === 'buckets' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto">
-            {loadingBuckets ? (
-              <div className="col-span-full p-8 text-center text-muted-foreground">Loading…</div>
-            ) : buckets.length === 0 ? (
-              <div className="col-span-full p-8 text-center text-muted-foreground">No buckets.</div>
+      {activeTab === 'unresolved' && (
+        <div className={cardClass}>
+          <div className="divide-y divide-white/[0.08] max-h-[600px] overflow-y-auto">
+            {loadingUnresolved ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">Loading…</div>
+            ) : uniqueTimestamps.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">No unresolved bets.</div>
             ) : (
-              buckets.map((b: { id: string; totalBets: number; totalStaked: string; nextProcessIndex: number; aggregationComplete: boolean }) => {
-                const expanded = expandedBuckets.has(b.id);
+              uniqueTimestamps.map((ts) => {
+                const tsStr = String(ts);
+                const expanded = expandedTs.has(tsStr);
+                const betsForTs = unresolvedBets.filter((b: { targetTimestamp: string }) => Number(b.targetTimestamp) === ts);
+                const bucketIds = Array.from(new Set(betsForTs.map((b: { bucket: number }) => b.bucket)));
                 return (
-                  <Card key={b.id} className="rounded-xl border border-border bg-card overflow-hidden">
+                  <div key={ts}>
                     <button
                       type="button"
-                      className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/20 transition-colors"
-                      onClick={() => toggleBucket(b.id)}
+                      className="w-full flex items-center gap-2 px-4 py-3.5 text-left hover:bg-white/[0.03] transition-colors"
+                      onClick={() => toggleTs(tsStr)}
                     >
-                      {expanded ? <ChevronDown className="w-4 h-4 text-foreground flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-foreground flex-shrink-0" />}
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-foreground">Bucket {b.id}</p>
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                          {b.totalBets} bets · {formatTinybarsToHbar(b.totalStaked)} HBAR staked
-                        </p>
-                      </div>
-                      {b.aggregationComplete ? (
-                        <span className="text-xs bg-green-500/20 text-green-600 dark:text-green-400 px-2 py-1 rounded font-medium flex-shrink-0">Complete</span>
+                      {expanded ? <ChevronDown className="size-4 text-muted-foreground" /> : <ChevronRight className="size-4 text-muted-foreground" />}
+                      <span className="font-mono text-sm text-foreground">{formatDateUTC(ts)}</span>
+                      <span className="text-muted-foreground text-xs">{betsForTs.length} bet(s)</span>
+                      <span className="text-muted-foreground text-xs">{bucketIds.length} bucket(s)</span>
+                      {isEligible(ts) ? (
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-md font-medium">Eligible now</span>
                       ) : (
-                        <span className="text-xs bg-amber-500/20 text-amber-600 dark:text-amber-400 px-2 py-1 rounded font-medium flex-shrink-0">Incomplete</span>
+                        <span className="text-xs bg-white/[0.06] text-muted-foreground px-2 py-0.5 rounded-md">Not yet</span>
                       )}
                     </button>
                     {expanded && (
-                      <CardContent className="pt-0 px-4 pb-4 border-t border-border">
-                        <dl className="grid grid-cols-2 gap-2 text-sm">
-                          <dt className="text-muted-foreground">Total staked</dt>
-                          <dd className="font-medium text-foreground">{formatTinybarsToHbar(b.totalStaked)} HBAR</dd>
-                          <dt className="text-muted-foreground">Bets count</dt>
-                          <dd className="font-medium text-foreground">{b.totalBets}</dd>
-                          <dt className="text-muted-foreground">Next process index</dt>
-                          <dd className="font-mono text-foreground">{b.nextProcessIndex}</dd>
-                          <dt className="text-muted-foreground">Status</dt>
-                          <dd className="font-medium text-foreground">{b.aggregationComplete ? 'Complete' : 'Incomplete'}</dd>
-                        </dl>
-                      </CardContent>
+                      <div className="pl-6 pr-4 pb-4">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-muted-foreground text-xs">
+                              <th className="text-left py-2">Bet ID</th>
+                              <th className="text-left py-2">Stake</th>
+                              <th className="text-left py-2">Min / Max</th>
+                              <th className="text-left py-2">Bucket</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {betsForTs.map((bet: { id: string; stake: string; priceMin: string; priceMax: string; bucket: number }) => (
+                              <tr key={bet.id} className="border-t border-white/[0.06]">
+                                <td className="py-2 font-mono text-xs">{bet.id}</td>
+                                <td className="py-2 text-xs">{formatTinybarsToHbar(bet.stake)} HBAR</td>
+                                <td className="py-2 text-xs tabular-nums">${Number(formatTinybarsToHbar(bet.priceMin)).toFixed(4)} / ${Number(formatTinybarsToHbar(bet.priceMax)).toFixed(4)}</td>
+                                <td className="py-2 text-xs">{bet.bucket}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     )}
-                  </Card>
+                  </div>
                 );
               })
             )}
           </div>
-        )}
+        </div>
+      )}
 
-        {activeTab === 'runs' && (
-          <Card className="rounded-xl border border-border bg-card">
-            <CardContent className="p-4">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-muted-foreground border-b border-border">
-                      <th className="text-left py-2">Run ID</th>
-                      <th className="text-left py-2">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {runs.length === 0 ? (
-                      <tr>
-                        <td colSpan={2} className="py-4 text-center text-muted-foreground">No runs or Torch API not configured.</td>
-                      </tr>
+      {activeTab === 'buckets' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto">
+          {loadingBuckets ? (
+            <div className="col-span-full p-8 text-center text-muted-foreground text-sm">Loading…</div>
+          ) : buckets.length === 0 ? (
+            <div className="col-span-full p-8 text-center text-muted-foreground text-sm">No buckets.</div>
+          ) : (
+            buckets.map((b: { id: string; totalBets: number; totalStaked: string; nextProcessIndex: number; aggregationComplete: boolean }) => {
+              const expanded = expandedBuckets.has(b.id);
+              return (
+                <div key={b.id} className={cardClass}>
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-3 p-4 text-left hover:bg-white/[0.03] transition-colors"
+                    onClick={() => toggleBucket(b.id)}
+                  >
+                    {expanded ? <ChevronDown className="size-4 text-muted-foreground shrink-0" /> : <ChevronRight className="size-4 text-muted-foreground shrink-0" />}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-foreground">Bucket {b.id}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {b.totalBets} bets · {formatTinybarsToHbar(b.totalStaked)} HBAR staked
+                      </p>
+                    </div>
+                    {b.aggregationComplete ? (
+                      <span className="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-md font-medium shrink-0">Complete</span>
                     ) : (
-                      runs.map((r) => (
-                        <tr key={r.runId} className="border-b border-border">
-                          <td className="py-2 font-mono text-foreground">{r.runId}</td>
-                          <td className="py-2">
-                            <Button
-                              size="sm"
-                              className="rounded gap-1 bg-primary text-white hover:bg-primary/90"
-                              onClick={() => fetchRunDetail(r.runId)}
-                            >
-                              View JSON
-                            </Button>
-                          </td>
-                        </tr>
-                      ))
+                      <span className="text-xs bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-md font-medium shrink-0">Incomplete</span>
                     )}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  </button>
+                  {expanded && (
+                    <div className="px-4 pb-4 pt-0 border-t border-white/[0.08]">
+                      <dl className="grid grid-cols-2 gap-2 text-sm pt-3">
+                        <dt className="text-xs text-muted-foreground">Total staked</dt>
+                        <dd className="text-xs font-medium text-foreground">{formatTinybarsToHbar(b.totalStaked)} HBAR</dd>
+                        <dt className="text-xs text-muted-foreground">Bets count</dt>
+                        <dd className="text-xs font-medium text-foreground">{b.totalBets}</dd>
+                        <dt className="text-xs text-muted-foreground">Next process index</dt>
+                        <dd className="text-xs font-mono text-foreground">{b.nextProcessIndex}</dd>
+                        <dt className="text-xs text-muted-foreground">Status</dt>
+                        <dd className="text-xs font-medium text-foreground">{b.aggregationComplete ? 'Complete' : 'Incomplete'}</dd>
+                      </dl>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
 
-        <Dialog open={jsonModalOpen} onOpenChange={setJsonModalOpen}>
-          <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-            <DialogHeader>
-              <DialogTitle className="text-foreground">Run details</DialogTitle>
-            </DialogHeader>
-            <div className="flex items-center justify-end gap-2 mb-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="rounded gap-1"
-                onClick={copyJson}
-              >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copied ? 'Copied' : 'Copy'}
-              </Button>
-            </div>
-            <pre className="text-xs bg-muted/50 p-4 rounded-lg overflow-auto flex-1 min-h-0 text-foreground border border-border">
-              {selectedRun != null ? JSON.stringify(selectedRun, null, 2) : '—'}
-            </pre>
-          </DialogContent>
-        </Dialog>
-      </main>
-    </div>
+      {activeTab === 'runs' && (
+        <div className={cardClass}>
+          <div className="overflow-x-auto p-4">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-muted-foreground border-b border-white/[0.08]">
+                  <th className="text-left py-2">Run ID</th>
+                  <th className="text-left py-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {runs.length === 0 ? (
+                  <tr>
+                    <td colSpan={2} className="py-4 text-center text-muted-foreground text-sm">No runs or Torch API not configured.</td>
+                  </tr>
+                ) : (
+                  runs.map((r) => (
+                    <tr key={r.runId} className="border-b border-white/[0.06]">
+                      <td className="py-2.5 font-mono text-xs text-foreground">{r.runId}</td>
+                      <td className="py-2.5">
+                        <button
+                          type="button"
+                          className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-white hover:bg-primary/85 transition-colors"
+                          onClick={() => fetchRunDetail(r.runId)}
+                        >
+                          View JSON
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <Dialog open={jsonModalOpen} onOpenChange={setJsonModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col border-white/[0.08] bg-background">
+          <DialogHeader>
+            <DialogTitle className="text-foreground text-sm font-semibold">Run details</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-end gap-2 mb-2">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              onClick={copyJson}
+            >
+              {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+          <pre className="text-xs bg-[hsl(0_0%_7%)] p-4 rounded-md overflow-auto flex-1 min-h-0 text-foreground border border-white/[0.06]">
+            {selectedRun != null ? JSON.stringify(selectedRun, null, 2) : '—'}
+          </pre>
+        </DialogContent>
+      </Dialog>
+    </PageLayout>
   );
 }

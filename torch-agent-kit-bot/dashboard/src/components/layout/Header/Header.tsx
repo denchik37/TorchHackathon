@@ -14,31 +14,13 @@ const SITE_LINKS = [
   { label: "Bot", href: "https://torch-agent.vercel.app/", external: true },
 ] as const;
 
-function NavLink({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}) {
-  const pathname = usePathname();
-  const isActive =
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
-  return (
-    <Link
-      href={href}
-      className={cn(
-        headerStyles.navLink,
-        "text-sm font-medium",
-        isActive && "text-foreground"
-      )}
-    >
-      {children}
-    </Link>
-  );
-}
+const NAV_LINKS = [
+  { label: "Runs", href: "/runs" },
+  { label: "Account", href: "/account" },
+] as const;
 
 export function Header() {
+  const pathname = usePathname();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -57,44 +39,57 @@ export function Header() {
       <div className={headerStyles.inner}>
         <div className={headerStyles.left}>
           <Link href="/" className={headerStyles.logoLink} aria-label="Dashboard home">
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg">
-              <Image src="/logo.svg" alt="Bot" width={40} height={40} />
-            </div>
+            <Image src="/logo.svg" alt="Bot" width={20} height={20} />
             <span className={headerStyles.logoText}>Bot</span>
           </Link>
-          <div className="relative" ref={ref}>
-            <button
-              type="button"
-              onClick={() => setDropdownOpen((o) => !o)}
-              className={headerStyles.navLink + " flex items-center gap-1.5 outline-none focus:ring-0"}
-              aria-label="Open links menu"
-            >
-              <span>Links</span>
-              <ChevronDown className="w-3.5 h-3.5 opacity-70" aria-hidden />
-            </button>
-            {dropdownOpen && (
-              <div className="absolute left-0 top-full mt-1 min-w-[10rem] rounded-xl border border-border bg-card shadow-lg py-1 z-50">
-                {SITE_LINKS.map((item) => (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3 py-2.5 text-sm text-foreground hover:bg-muted/40 outline-none rounded-md"
-                    onClick={() => setDropdownOpen(false)}
-                  >
-                    {item.label}
-                    <ExternalLink className="w-3.5 h-3.5 opacity-70" />
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
 
-        <div className={headerStyles.right}>
-          <NavLink href="/runs">Runs</NavLink>
-          <NavLink href="/account">Account</NavLink>
+          <nav className="hidden sm:flex items-center gap-1">
+            <div className="relative" ref={ref}>
+              <button
+                type="button"
+                onClick={() => setDropdownOpen((o) => !o)}
+                className={cn(headerStyles.navLink, "flex items-center gap-1.5 outline-none focus:ring-0")}
+                aria-label="Open links menu"
+              >
+                <span>Links</span>
+                <ChevronDown className="size-3.5 opacity-70" aria-hidden />
+              </button>
+              {dropdownOpen && (
+                <div className="absolute left-0 top-full mt-1 min-w-[10rem] rounded-xl border border-white/[0.08] bg-background py-1 z-50">
+                  {SITE_LINKS.map((item) => (
+                    <a
+                      key={item.href}
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2.5 text-sm text-foreground hover:bg-white/[0.03] outline-none rounded-md"
+                      onClick={() => setDropdownOpen(false)}
+                    >
+                      {item.label}
+                      <ExternalLink className="size-3.5 opacity-70" />
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {NAV_LINKS.map((link) => {
+              const isActive =
+                link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    headerStyles.navLink,
+                    isActive && headerStyles.navLinkActive
+                  )}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
       </div>
     </header>
