@@ -1,6 +1,6 @@
 # Torch Agent Kit — Dashboard
 
-Read-only Next.js dashboard to monitor daily runs, forecasts, bet params, results, and **on-chain account data** for the Torch Agent Kit bot. Styling matches the main Torch frontend (dark theme, vibrant purple, glass cards).
+Read-only Next.js dashboard to monitor daily runs, forecasts, bet params, results, and **on-chain account data** for the Torch Agent Kit bot. Styling matches the main Torch frontend.
 
 ## What it does
 
@@ -19,7 +19,6 @@ Read-only Next.js dashboard to monitor daily runs, forecasts, bet params, result
 Create `dashboard/.env.local` (or `.env`) for optional on-chain data:
 
 ```bash
-# Optional: same account ID as the bot (no private key)
 BOT_ACCOUNT_ID=0.0.xxxxx
 BOT_NETWORK=testnet
 ```
@@ -61,7 +60,7 @@ Or from dashboard folder: `npm run build && npm run start`. The app listens on p
    ```
 
 2. **Run in production** so it keeps running:
-   - Option A: `npm run dashboard:start` (or `cd dashboard && npm run start`) and keep the process alive (e.g. with `pm2` or `systemd`).
+   - Option A: `npm run dashboard:start` (or `cd dashboard && npm run start`) and keep the process alive (e.g. with `systemd`).
    - Option B: Use Next.js standalone output: copy `dashboard/.next/standalone` and `dashboard/.next/static` to the server, then run `node server.js` from the standalone folder (set `PORT=3001` if needed).
 
 3. **Reverse proxy**: Put nginx or Caddy in front and proxy to `http://127.0.0.1:3001`.
