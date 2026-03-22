@@ -117,6 +117,167 @@ task("transfer-ownership", "Transfer contract ownership to a new address")
     return transferOwnership(taskArgs.contractAddress, taskArgs.newOwner);
   });
 
+task("verify-contract", "Prepare contract for HashScan verification")
+  .addParam("contractAddress", "The address of the deployed contract")
+  .addOptionalParam("contractName", "The name of the contract", "TorchPredictionMarket")
+  .setAction(async (taskArgs) => {
+    const verifyContract = require("./scripts/verifyContract");
+    return verifyContract(taskArgs.contractAddress, taskArgs.contractName);
+  });
+
+task("verify-contract-api", "Verify contract using Sourcify API")
+  .addParam("contractAddress", "The address of the deployed contract")
+  .addOptionalParam("contractName", "The name of the contract", "TorchPredictionMarket")
+  .setAction(async (taskArgs) => {
+    const verifyContractAPI = require("./scripts/verifyContractAPI");
+    return verifyContractAPI(taskArgs.contractAddress, taskArgs.contractName);
+  });
+
+task("open-verify", "Open HashScan verification page")
+  .setAction(async () => {
+    require("./scripts/openHashScanVerification");
+  });
+
+task("deploy-simple-torch", "Deploy SimpleTorchMarket contract")
+  .setAction(async () => {
+    const deploySimpleTorch = require("./scripts/deploySimpleTorch");
+    return deploySimpleTorch();
+  });
+
+task("test-simple-torch", "Test SimpleTorchMarket deposit and withdraw")
+  .addOptionalParam("address", "Contract address", "0x73f83d91F666567Dbe365543F01Cd90a3F5962Fb")
+  .setAction(async (taskArgs) => {
+    const testSimpleTorchFlow = require("./scripts/testSimpleTorchFlow");
+    return testSimpleTorchFlow(taskArgs.address);
+  });
+
+// --- TorchPredictionMarketERC20 + MockERC20 (Hedera / same CLI as classic torch) ---
+
+task("deploy-mock-erc20", "Deploy MockERC20 test token").setAction(async () => {
+  return require("./scripts/deployMockERC20")();
+});
+
+task("deploy-torch-erc20", "Deploy TorchPredictionMarketERC20 (set COLLATERAL_TOKEN_ADDRESS or pass token)")
+  .addOptionalParam("token", "Collateral ERC20 address")
+  .setAction(async (taskArgs) => {
+    return require("./scripts/deployTorchPredictionMarketERC20")(taskArgs.token);
+  });
+
+task("deploy-torch-erc20-stack", "Deploy MockERC20 + TorchPredictionMarketERC20 and mint MCOL to deployer").setAction(
+  async () => {
+    return require("./scripts/deployTorchErc20Stack")();
+  },
+);
+
+task("mint-mock-erc20", "Mint MockERC20 to an address (ether string)")
+  .addParam("token", "MockERC20 address")
+  .addParam("to", "Recipient")
+  .addParam("amount", "Amount in ether, e.g. 1000")
+  .setAction(async (taskArgs) => {
+    return require("./scripts/mintMockERC20")(
+      taskArgs.token,
+      taskArgs.to,
+      taskArgs.amount,
+    );
+  });
+
+task("place-bet-erc20", "Approve (if needed) and placeBet on TorchPredictionMarketERC20")
+  .addParam("contractAddress", "Market address")
+  .addParam("targetTimestamp", "Target unix timestamp")
+  .addParam("priceMin", "Min price BPS")
+  .addParam("priceMax", "Max price BPS")
+  .addParam("stakeAmount", "Gross stake: wei string or ether e.g. 0.1")
+  .setAction(async (taskArgs) => {
+    return require("./scripts/placeBetERC20")(
+      taskArgs.contractAddress,
+      taskArgs.targetTimestamp,
+      taskArgs.priceMin,
+      taskArgs.priceMax,
+      taskArgs.stakeAmount,
+    );
+  });
+
+task("claim-bet-erc20", "Claim bet on TorchPredictionMarketERC20 (ERC20 payout)")
+  .addParam("contractAddress", "Market address")
+  .addParam("betId", "Bet id")
+  .setAction(async (taskArgs) => {
+    return require("./scripts/claimBetERC20")(
+      taskArgs.contractAddress,
+      taskArgs.betId,
+    );
+  });
+
+task("set-price-erc20", "Oracle: setPriceForTimestamp on ERC20 market")
+  .addParam("contractAddress", "Market address")
+  .addParam("timestamp", "Target timestamp")
+  .addParam("price", "Resolution price")
+  .setAction(async (taskArgs) => {
+    return require("./scripts/setPriceForTimestampERC20")(
+      taskArgs.contractAddress,
+      taskArgs.timestamp,
+      taskArgs.price,
+    );
+  });
+
+task("process-batch-erc20", "Run processBatch(bucket) on ERC20 market")
+  .addParam("contractAddress", "Market address")
+  .addParam("bucket", "Bucket index")
+  .setAction(async (taskArgs) => {
+    return require("./scripts/processBatchERC20")(
+      taskArgs.contractAddress,
+      taskArgs.bucket,
+    );
+  });
+
+task("withdraw-fees-erc20", "Withdraw fee balance to owner (ERC20)")
+  .addParam("contractAddress", "Market address")
+  .setAction(async (taskArgs) => {
+    return require("./scripts/withdrawFeesERC20")(taskArgs.contractAddress);
+  });
+
+task("transfer-ownership-erc20", "transferOwnership on TorchPredictionMarketERC20")
+  .addParam("contractAddress", "Market address")
+  .addParam("newOwner", "New owner address")
+  .setAction(async (taskArgs) => {
+    return require("./scripts/transferOwnershipERC20")(
+      taskArgs.contractAddress,
+      taskArgs.newOwner,
+    );
+  });
+
+task("place-10-bets-erc20", "Place 10 delayed bets (needs TORCH_ERC20_MARKET_ADDRESS + MockERC20)").setAction(
+  async () => {
+    return require("./scripts/place10BetsWithDelayERC20")();
+  },
+);
+
+task("test-erc20-flow", "Full ERC20 market flow (needs TORCH_ERC20_MARKET_ADDRESS; MockERC20 mints)").setAction(
+  async () => {
+    return require("./scripts/testErc20MainnetFlow")();
+  },
+);
+
+task(
+  "deploy-torch-erc20-stack-and-test",
+  "Deploy MockERC20 + market and run full flow in one process (good for hardhat network)",
+).setAction(async () => {
+  const { marketAddress } = await require("./scripts/deployTorchErc20Stack")();
+  return require("./scripts/testErc20MainnetFlow")(marketAddress);
+});
+
+task("local-erc20-place-one-bet", "Deploy MCOL + ERC20 market + one placeBet").setAction(
+  async (_, hre) => {
+    await hre.run("run", { script: "scripts/localErc20PlaceOneBet.js" });
+  },
+);
+
+task(
+  "place-erc20-strategy-three-buckets",
+  "Place 3-bucket test bets (single / single / batch). Needs TORCH_ERC20_MARKET_ADDRESS. Use --network mainnet or testnet",
+).setAction(async (_, hre) => {
+  await hre.run("run", { script: "scripts/placeErc20ThreeBucketStrategyBets.js" });
+});
+
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   mocha: {
@@ -134,6 +295,11 @@ module.exports = {
   // This specifies network configurations used when running Hardhat tasks
   defaultNetwork: "testnet",
   networks: {
+    hardhat: {},
+    // `npx hardhat node` then use --network localhost for multi-step local sessions
+    localhost: {
+      url: "http://127.0.0.1:8545",
+    },
     local: {
       // Your Hedera Local Node address pulled from the .env file
       url: process.env.LOCAL_NODE_ENDPOINT,
