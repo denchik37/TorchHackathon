@@ -64,7 +64,7 @@ Deployment is split between **Vercel** (UI and server-side proxy) and **Hetzner*
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  USERS / BROWSER                                                             │
+│  USERS / BROWSER                                                            │
 └─────────────────────────────────────────────────────────────────────────────┘
          │                                    │
          │ GraphQL (/api/subgraph)            │ REST (oracle runs, health)
