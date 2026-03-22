@@ -260,7 +260,7 @@ cd frontend && npm install
 |------|------|
 | Denis Igin | PM, Marketing |
 | Balut Catalin-Mihai | Smart Contract Developer |
-| Sebastien Guibert | Blockchain Data Integration / Architect |
+| Sebastien Guibert | Blockchain Data Integration / Architect / Fullstack |
 | Sebastian Balaj | Frontend Developer |
 | Mohammad Hatif Osmani | Frontend Developer |
 
