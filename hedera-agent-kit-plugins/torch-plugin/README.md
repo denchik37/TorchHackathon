@@ -15,7 +15,7 @@ npm install ../hedera-agent-kit-plugins/torch-plugin
 For a future published version, the equivalent command would be:
 
 ```bash
-npm install @torch/hedera-agent-kit-torch-plugin
+npm install @torch-bet/hedera-torch-plugin
 ```
 
 ## Usage
