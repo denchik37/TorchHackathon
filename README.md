@@ -67,34 +67,34 @@ Deployment is split between **Vercel** (UI and server-side proxy) and **Hetzner*
 │  USERS / BROWSER                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
          │                                    │
-         │ GraphQL (/api/subgraph)             │ REST (oracle runs, health)
+         │ GraphQL (/api/subgraph)            │ REST (oracle runs, health)
          ▼                                    ▼
 ┌─────────────────────┐            ┌─────────────────────────────────────────┐
-│  frontend (Vercel)   │            │  dashboard (optional, Vercel/same host)  │
-│  Prediction UI,      │            │  Overview, Runs, Resolver runs, Account  │
-│  My Bets, Oracle     │            │  Proxies to torch-api when configured    │
+│  frontend (Vercel)  │            │  dashboard (Vercel)                     │
+│  Prediction UI,     │            │  Overview, Runs, Resolver runs, Account │
+│  My Bets, Oracle    │            │  Proxies to torch-api when configured   │
 └─────────────────────┘            └─────────────────────────────────────────┘
-         │                                            │ Bearer token
+         │                                             │ Bearer token
          │ NEXT_PUBLIC_SUBGRAPH_URL                    ▼
          ▼                                    ┌─────────────────────────────────┐
-┌─────────────────────┐                      │  torch-api (Hetzner, port 3001)  │
-│  Subgraph (GraphQL) │                      │  Read-only API over JSON files   │
-└─────────────────────┘                      │  GET /api/health, resolver/runs  │
+┌─────────────────────┐                       │  torch-api (Hetzner, port 3001) │
+│  Subgraph (GraphQL) │                       │  Read-only API over JSON files  │
+└─────────────────────┘                       │  GET /api/health, resolver/runs │
                                               └─────────────────────────────────┘
                                                               │
                                     BETTING_RUNS_DIR,         │ reads from disk
                                     RESOLVER_RUNS_DIR         ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  HETZNER                                                                      │
-│  /var/lib/torch/resolver-runs (or /opt/.../runs) — RESOLVE-*.json            │
-│  /var/lib/torch/resolver-state/state.json — resolver state                   │
-│  Bet bot runs: torch-agent-kit-bot/runs/YYYY-MM-DD.json                       │
+│  HETZNER                                                                    │
+│  /var/lib/torch/resolver-runs — RESOLVE-*.json                              │
+│  /var/lib/torch/resolver-state/state.json — resolver state                  │
+│  Bet bot runs: torch-agent-kit-bot/runs/YYYY-MM-DD.json                     │
 └─────────────────────────────────────────────────────────────────────────────┘
          ▲                                    ▲
          │ placeBet()                         │ setPricesForTimestamps, processBatch
 ┌─────────────────────┐                      ┌─────────────────────────────────┐
-│  torch-agent-kit-bot│                      │  torch-oracle-resolver            │
-│  (systemd timer)    │                      │  (systemd timer, e.g. every 15m)  │
+│  torch-agent-kit-bot│                      │  torch-oracle-resolver          │
+│  (systemd timer)    │                      │  (systemd timer, every 15m)     │
 └─────────────────────┘                      └─────────────────────────────────┘
                               Hedera network · TorchPredictionMarket contract
 ```
@@ -186,9 +186,9 @@ Frontend Oracle page shows resolver run data only when `TORCH_API_BASE` and `DAS
 
 ## ⏱ Automatic Resolution & Oracle Runs
 
-- **Resolver:** Triggered by systemd timer on Hetzner (e.g. every 15 minutes). Optional manual trigger must be a **Hetzner-side** endpoint (e.g. protected by `RESOLVER_TRIGGER_SECRET`); the frontend `POST /api/oracle/trigger` returns 501 and does not run the resolver.
+- **Resolver:** Triggered by systemd timer on Hetzner (every 15 minutes). Optional manual trigger must be a **Hetzner-side** endpoint (e.g. protected by `RESOLVER_TRIGGER_SECRET`); the frontend `POST /api/oracle/trigger` returns 501 and does not run the resolver.
 - **Artifacts:** Resolver writes `RESOLVE-<runId>.json` under `RESOLVER_RUNS_DIR` and state to `RESOLVER_STATE_PATH`. torch-api reads these dirs and exposes `GET /api/resolver/runs` and `GET /api/resolver/runs/:id`.
-- **Frontend/dashboard:** Call their own `/api/oracle/runs` (or equivalent), which **proxy** to torch-api with the Bearer token; they never read the filesystem or run the resolver.
+- **Frontend/dashboard:** Call their own `/api/oracle/runs`, which **proxy** to torch-api with the Bearer token; they never read the filesystem or run the resolver.
 
 ---
 
@@ -199,7 +199,7 @@ Each resolver run produces a JSON artifact (e.g. in torch-api responses and on d
 | Field | Meaning |
 |-------|--------|
 | **acceptedCount** | Number of timestamps that passed price check and were submitted (setPrices). |
-| **blockedCount** | Timestamps blocked (e.g. oracle divergence &gt; `MAX_PRICE_DIVERGENCE_PCT`). |
+| **blockedCount** | Timestamps blocked (`MAX_PRICE_DIVERGENCE_PCT`). |
 | **setPricesBatchTxIds** | Hedera transaction IDs for `setPricesForTimestamps` batches. |
 | **processBatchTxIds** | Per-bucket list of transaction IDs for `processBatch` calls. |
 
@@ -207,9 +207,9 @@ Each resolver run produces a JSON artifact (e.g. in torch-api responses and on d
 
 ## 🎬 Demo Flow
 
-1. **Frontend:** Open prediction page, connect wallet, place a bet (or show existing bets and Oracle page).
+1. **Frontend:** Open prediction page, connect wallet, place a bet (show existing bets and Oracle page).
 2. **Oracle page:** Show resolver runs and run detail (data comes from torch-api via frontend proxy when `TORCH_API_BASE` and `DASHBOARD_API_TOKEN` are set).
-3. **Dashboard (optional):** Open bot dashboard; show Overview (last betting run, last resolver run), Runs list, Resolver runs, Account (from Mirror).
+3. **Dashboard:** Open bot dashboard; show Overview (last betting run, last resolver run), Runs list, Resolver runs, Account.
 4. **Backend:** Emphasize resolver and bot run on Hetzner only; Vercel only serves UI and proxies to torch-api.
 
 ---
