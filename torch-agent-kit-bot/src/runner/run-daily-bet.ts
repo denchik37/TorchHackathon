@@ -12,7 +12,7 @@ import { parseMinMax } from "../parse/minmax.js";
 import { getNextEligibleTargets } from "../time/targets.js";
 import { buildBetParams } from "../policy/betPolicy.js";
 import { createHederaClient } from "../hedera/client.js";
-import type { TorchPlaceBetResult } from "@torch/hedera-agent-kit-torch-plugin";
+import type { TorchPlaceBetResult } from "@torch-bet/hedera-torch-plugin";
 import {
   betKey,
   loadRunArtifact,
@@ -20,7 +20,7 @@ import {
   saveArtifact,
   type RunArtifact,
 } from "../storage/runStore.js";
-import { executeTorchPlaceBet } from "@torch/hedera-agent-kit-torch-plugin";
+import { executeTorchPlaceBet } from "@torch-bet/hedera-torch-plugin";
 
 const RUNS_DIR = "runs";
 
