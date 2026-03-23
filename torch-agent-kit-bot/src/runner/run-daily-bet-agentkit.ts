@@ -8,8 +8,19 @@
  */
 
 import "dotenv/config";
+import { mkdir } from "fs/promises";
 import { randomUUID } from "crypto";
 import pino from "pino";
+
+import { ChatOpenAI } from "@langchain/openai";
+import { createAgent } from "langchain";
+import { HederaLangchainToolkit, AgentMode } from "hedera-agent-kit";
+import {
+  torchPlaceBetPlugin,
+  torchPlaceBetPluginToolNames,
+  type TorchPlaceBetResult,
+} from "@torch-bet/hedera-torch-plugin";
+
 import { createHederaClient } from "../hedera/client.js";
 import { getEnv } from "../config/env.js";
 import { buildPrompt } from "../openai/forecast.js";
@@ -22,16 +33,7 @@ import {
   type RunArtifact,
 } from "../storage/runStore.js";
 
-import { ChatOpenAI } from "@langchain/openai";
-import { createAgent } from "langchain";
-import { HederaLangchainToolkit, AgentMode } from "hedera-agent-kit";
-import {
-  torchPlaceBetPlugin,
-  torchPlaceBetPluginToolNames,
-  type TorchPlaceBetResult,
-} from "@torch-bet/hedera-torch-plugin";
-
-const RUNS_DIR = "runs";
+const RUNS_DIR = process.env.BETTING_RUNS_DIR ?? "runs";
 
 function getLogger() {
   return pino({
@@ -47,31 +49,131 @@ function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function extractTorchToolArtifact(messages: unknown[]): TorchPlaceBetResult | null {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const m = messages[i] as any;
-    if (!m || m.type !== "tool") continue;
+function safeStringPreview(value: unknown, max = 300): string {
+  try {
+    if (typeof value === "string") return value.slice(0, max);
+    return JSON.stringify(value).slice(0, max);
+  } catch {
+    return String(value).slice(0, max);
+  }
+}
 
-    // Preferred: langchain ToolMessage.artifact contains full tool output.
-    if (m.artifact && typeof m.artifact === "object" && m.artifact.forecastRaw) {
-      return m.artifact as TorchPlaceBetResult;
+function tryParseJson(text: string): unknown | null {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function looksLikeTorchPlaceBetResult(obj: Record<string, unknown>): boolean {
+  return (
+    typeof obj.forecastRaw === "string" &&
+    typeof obj.minStr === "string" &&
+    typeof obj.maxStr === "string" &&
+    typeof obj.priceMinStr === "string" &&
+    typeof obj.priceMaxStr === "string" &&
+    typeof obj.priceMinInt === "string" &&
+    typeof obj.priceMaxInt === "string" &&
+    typeof obj.stakeHbar === "string"
+  );
+}
+
+function tryParseToolResultObject(value: unknown): TorchPlaceBetResult | null {
+  if (!value || typeof value !== "object") return null;
+
+  const obj = value as Record<string, unknown>;
+
+  if (looksLikeTorchPlaceBetResult(obj)) {
+    return obj as unknown as TorchPlaceBetResult;
+  }
+
+  for (const key of ["result", "output", "artifact", "data", "response"]) {
+    const nested = obj[key];
+    if (nested && typeof nested === "object") {
+      const parsed = tryParseToolResultObject(nested);
+      if (parsed) return parsed;
     }
+  }
 
-    // Fallback: sometimes content is JSON.
-    if (
-      typeof m.content === "string" &&
-      m.content.trim().startsWith("{") &&
-      m.content.includes("forecastRaw")
-    ) {
-      try {
-        const parsed = JSON.parse(m.content);
-        if (parsed && parsed.forecastRaw) return parsed as TorchPlaceBetResult;
-      } catch {
-        // ignore
+  return null;
+}
+
+function extractTextCandidates(content: unknown): string[] {
+  const out: string[] = [];
+
+  if (typeof content === "string") {
+    out.push(content);
+    return out;
+  }
+
+  if (Array.isArray(content)) {
+    for (const part of content) {
+      if (typeof part === "string") {
+        out.push(part);
+        continue;
+      }
+
+      if (part && typeof part === "object") {
+        const p = part as Record<string, unknown>;
+
+        if (typeof p.text === "string") out.push(p.text);
+        if (typeof p.content === "string") out.push(p.content);
+        if (typeof p.output === "string") out.push(p.output);
+
+        if (p.text && typeof p.text === "object") {
+          out.push(safeStringPreview(p.text));
+        }
       }
     }
   }
+
+  return out;
+}
+
+function extractTorchToolArtifact(messages: unknown[]): TorchPlaceBetResult | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i] as any;
+    if (!m) continue;
+
+    const fromArtifact =
+      tryParseToolResultObject(m.artifact) ||
+      tryParseToolResultObject(m.additional_kwargs) ||
+      tryParseToolResultObject(m.kwargs) ||
+      tryParseToolResultObject(m.response_metadata);
+
+    if (fromArtifact) return fromArtifact;
+
+    const textCandidates = extractTextCandidates(m.content);
+    for (const text of textCandidates) {
+      const trimmed = text.trim();
+      if (!trimmed.startsWith("{") || !trimmed.includes("forecastRaw")) continue;
+
+      const parsedJson = tryParseJson(trimmed);
+      const parsedResult = tryParseToolResultObject(parsedJson);
+      if (parsedResult) return parsedResult;
+    }
+  }
+
   return null;
+}
+
+function summarizeMessages(messages: unknown[]) {
+  return (messages as any[]).map((m, idx) => ({
+    idx,
+    type: m?.type,
+    name: m?.name,
+    hasArtifact: !!m?.artifact,
+    artifactKeys:
+      m?.artifact && typeof m.artifact === "object" ? Object.keys(m.artifact) : [],
+    additionalKwargsKeys:
+      m?.additional_kwargs && typeof m.additional_kwargs === "object"
+        ? Object.keys(m.additional_kwargs)
+        : [],
+    kwargsKeys:
+      m?.kwargs && typeof m.kwargs === "object" ? Object.keys(m.kwargs) : [],
+    contentPreview: safeStringPreview(m?.content),
+  }));
 }
 
 export async function main(): Promise<void> {
@@ -80,12 +182,12 @@ export async function main(): Promise<void> {
   const dateStr = todayStr();
   const runId = randomUUID();
 
-  log.info({ runId, dateStr }, "Starting daily bet run (Agent Kit / LangChain)");
+  log.info({ runId, dateStr, runsDir: RUNS_DIR }, "Starting daily bet run (Agent Kit / LangChain)");
+
+  await mkdir(RUNS_DIR, { recursive: true });
 
   let artifact = await loadRunArtifact(RUNS_DIR, dateStr);
-  const successfulKeys = artifact
-    ? getSuccessfulBetKeys(artifact)
-    : new Set<string>();
+  const successfulKeys = artifact ? getSuccessfulBetKeys(artifact) : new Set<string>();
 
   const targets = getNextEligibleTargets({
     minLeadSeconds: env.MIN_TARGET_LEAD_SECONDS,
@@ -107,9 +209,6 @@ export async function main(): Promise<void> {
   const betParams: RunArtifact["betParams"] = [];
   const results: RunArtifact["results"] = [];
 
-  // We need a Hedera client for the tool execution path. In parse-only mode
-  // (`execute=false`) it will not submit transactions, but the toolkit still
-  // requires an initialized client.
   const client = await createHederaClient({ log });
 
   const toolkit = new HederaLangchainToolkit({
@@ -127,21 +226,22 @@ export async function main(): Promise<void> {
     model: new ChatOpenAI({
       model: env.OPENAI_MODEL,
       apiKey: env.OPENAI_API_KEY,
+      temperature: 0,
     }),
-    // HederaLangchainToolkit returns HederaAgentKitTool wrappers which are runtime-compatible
-    // with LangChain tools, but the TS types don't align 1:1 in this repo's versions.
     tools: toolkit.getTools() as any,
     systemPrompt:
       "You are a deterministic TorchPredictionMarket bet assistant.\n" +
-      "When given a forecastPrompt, you MUST generate exactly one line in the format \"Min: x, Max: y\".\n" +
-      "Then you MUST call TORCH_PLACE_BET_TOOL with forecastRaw equal to that exact line.\n" +
-      "Do not include any other text in the tool call beyond what is required by the schema.",
+      "For every request you must do exactly two things:\n" +
+      "1) Generate exactly one forecast line in the format \"Min: x, Max: y\".\n" +
+      "2) Immediately call TORCH_PLACE_BET_TOOL exactly once using that exact forecast line as forecastRaw.\n" +
+      "Do not answer conversationally.\n" +
+      "Do not provide extra text.\n" +
+      "Do not skip the tool call.",
   });
 
   for (const target of targets) {
     const key = betKey(env.SYMBOL, target.timestamp);
     const prompt = buildPrompt(target.monthDay, env.CONFIDENCE_PERCENT);
-
     const executeThisBet = !env.DRY_RUN && !successfulKeys.has(key);
 
     const userContent =
@@ -149,15 +249,15 @@ export async function main(): Promise<void> {
       `monthDay=${target.monthDay}\n` +
       `betKey=${key}\n` +
       `executeThisBet=${executeThisBet}\n\n` +
-      `Your only job is:\n` +
-      `1) Use the following forecastPrompt verbatim to generate the forecast line.\n` +
-      `2) Call TORCH_PLACE_BET_TOOL with:\n` +
+      `You must:\n` +
+      `1) Use the following forecastPrompt verbatim to generate exactly one forecast line.\n` +
+      `2) Call TORCH_PLACE_BET_TOOL exactly once with:\n` +
       `   - torchContractId=${env.TORCH_CONTRACT_ID}\n` +
       `   - gasLimit=${env.GAS_LIMIT}\n` +
       `   - targetTimestamp=${target.timestamp}\n` +
       `   - stakeHbar=${env.STAKE_HBAR}\n` +
       `   - execute=${executeThisBet}\n` +
-      `   - forecastRaw=(exact forecast line)\n\n` +
+      `   - forecastRaw=(the exact generated forecast line)\n\n` +
       `forecastPrompt:\n${prompt}\n`;
 
     try {
@@ -166,7 +266,17 @@ export async function main(): Promise<void> {
       });
 
       const toolArtifact = extractTorchToolArtifact(state.messages as unknown[]);
+
       if (!toolArtifact) {
+        log.error(
+          {
+            betKey: key,
+            targetTimestamp: target.timestamp,
+            messageSummary: summarizeMessages(state.messages as unknown[]),
+          },
+          "Agent returned messages but no Torch tool artifact was found"
+        );
+
         throw new Error("Tool output not found in agent messages");
       }
 
@@ -200,9 +310,20 @@ export async function main(): Promise<void> {
           minStr: toolArtifact.minStr,
           maxStr: toolArtifact.maxStr,
         });
+
         if (toolArtifact.txId && toolArtifact.status === 22) {
           successfulKeys.add(key);
         }
+
+        log.info(
+          {
+            betKey: key,
+            targetTimestamp: target.timestamp,
+            txId: toolArtifact.txId,
+            status: toolArtifact.status,
+          },
+          "Agent Kit bet processed"
+        );
       } else if (env.DRY_RUN) {
         results.push({
           betKey: key,
@@ -213,6 +334,11 @@ export async function main(): Promise<void> {
           minStr: toolArtifact.minStr,
           maxStr: toolArtifact.maxStr,
         });
+
+        log.info(
+          { betKey: key, targetTimestamp: target.timestamp },
+          "DRY_RUN: Agent Kit would place bet"
+        );
       } else {
         results.push({
           betKey: key,
@@ -223,12 +349,13 @@ export async function main(): Promise<void> {
           minStr: toolArtifact.minStr,
           maxStr: toolArtifact.maxStr,
         });
+
+        log.info({ betKey: key }, "Skipping duplicate (already placed today)");
       }
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : String(e);
-      log.error({ betKey: key, error: errMsg }, "Agent run failed for target");
+      log.error({ betKey: key, targetTimestamp: target.timestamp, error: errMsg }, "Agent run failed for target");
 
-      // Preserve the artifact behavior: record the error in results and skip tx fields.
       results.push({
         betKey: key,
         targetTimestamp: target.timestamp,
@@ -257,11 +384,11 @@ export async function main(): Promise<void> {
 
   artifact.results = [...(artifact.results ?? []), ...results];
   await saveArtifact(RUNS_DIR, dateStr, artifact);
-  log.info({ runId }, "Agent Kit daily run finished");
+
+  log.info({ runId, dateStr, resultsCount: results.length }, "Agent Kit daily run finished");
 }
 
 main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
-
