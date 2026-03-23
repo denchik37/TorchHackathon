@@ -226,7 +226,7 @@ export async function main(): Promise<void> {
     model: new ChatOpenAI({
       model: env.OPENAI_MODEL,
       apiKey: env.OPENAI_API_KEY,
-      temperature: 0,
+      temperature: 1,
     }),
     tools: toolkit.getTools() as any,
     systemPrompt:
