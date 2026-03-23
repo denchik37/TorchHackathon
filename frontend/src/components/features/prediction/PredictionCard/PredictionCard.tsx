@@ -124,18 +124,35 @@ export function PredictionCard({ className }: PredictionCardProps) {
     variables: { startTimestamp: startUnix, endTimestamp: endUnix },
   });
 
-  // Query for total bet counts
-  const { data: allBetsData } = useQuery(gql`
-    query GetAllBets {
-      bets {
-        id
-        finalized
+  // Total bets (used by the histogram sizing, etc.)
+  const { data: totalBetsData } = useQuery(
+    gql`
+      query GetTotalBets {
+        bets {
+          id
+        }
       }
-    }
-  `);
+    `
+  );
 
-  const totalBets = allBetsData?.bets?.length || 0;
-  const activeBets = allBetsData?.bets?.filter((bet: any) => !bet.finalized)?.length || 0;
+  // Unresolved bets (used for the "active" badge)
+  const { data: unresolvedBetsData } = useQuery(
+    gql`
+      query GetUnresolvedBets {
+        bets(
+          where: { bucketRef_: { aggregationComplete: false }, finalized: false }
+          first: 1000
+          orderBy: targetTimestamp
+          orderDirection: asc
+        ) {
+          id
+        }
+      }
+    `
+  );
+
+  const totalBets = totalBetsData?.bets?.length || 0;
+  const activeBets = unresolvedBetsData?.bets?.length || 0;
 
   const handleRangeChange = (min: number, max: number) => {
     setSelectedRange({ min, max });

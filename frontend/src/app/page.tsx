@@ -14,10 +14,14 @@ const PredictionCard = dynamic(
 );
 
 const GET_ALL_BETS = gql`
-  query GetAllBetsForMarketCards {
-    bets {
+  query GetUnresolvedBetsForMarketCards {
+    bets(
+      where: { bucketRef_: { aggregationComplete: false }, finalized: false }
+      first: 1000
+      orderBy: targetTimestamp
+      orderDirection: asc
+    ) {
       id
-      finalized
     }
   }
 `;
@@ -110,9 +114,27 @@ export default function Home() {
   const [sauceChange24h, setSauceChange24h] = useState<number | null>(null);
   const [sauceLoading, setSauceLoading] = useState(true);
 
+  // Coming soon markets
+  const [bonzoPrice, setBonzoPrice] = useState<number | null>(null);
+  const [bonzoChange24h, setBonzoChange24h] = useState<number | null>(null);
+  const [hsuitePrice, setHsuitePrice] = useState<number | null>(null);
+  const [hsuiteChange24h, setHsuiteChange24h] = useState<number | null>(null);
+  const [dovuPrice, setDovuPrice] = useState<number | null>(null);
+  const [dovuChange24h, setDovuChange24h] = useState<number | null>(null);
+  const [hpackPrice, setHpackPrice] = useState<number | null>(null);
+  const [hpackChange24h, setHpackChange24h] = useState<number | null>(null);
+
+  function formatUsdPrice(n: number) {
+    const decimals = n >= 1 ? 4 : 6;
+    return `$${n.toFixed(decimals)}`;
+  }
+
+  function formatChangePct(n: number) {
+    return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
+  }
+
   const activeHbarBets = useMemo(() => {
-    const bets = betsData?.bets ?? [];
-    return bets.filter((b: { finalized: boolean }) => !b.finalized).length;
+    return betsData?.bets?.length ?? 0;
   }, [betsData]);
 
   useEffect(() => {
@@ -121,23 +143,48 @@ export default function Home() {
       try {
         setSauceLoading(true);
         const res = await fetch(
-          'https://api.coingecko.com/api/v3/simple/price?ids=saucerswap,hedera-hashgraph&vs_currencies=usd&include_24hr_change=true'
+          'https://api.coingecko.com/api/v3/simple/price?ids=saucerswap,hedera-hashgraph,bonzo-finance,hsuite,dovu-2,hashpack&vs_currencies=usd&include_24hr_change=true'
         );
         if (!res.ok) throw new Error('Failed to fetch SAUCE price');
-        const json = (await res.json()) as {
-          saucerswap?: { usd?: number; usd_24h_change?: number };
-          'hedera-hashgraph'?: { usd_24h_change?: number };
-        };
+        const json = (await res.json()) as Record<
+          string,
+          { usd?: number; usd_24h_change?: number }
+        >;
         if (!cancelled) {
-          setSaucePrice(json.saucerswap?.usd ?? null);
-          setSauceChange24h(json.saucerswap?.usd_24h_change ?? null);
-          setHbarChange24h(json['hedera-hashgraph']?.usd_24h_change ?? null);
+          const sauce = json.saucerswap;
+          const hbar = json['hedera-hashgraph'];
+          const bonzo = json['bonzo-finance'];
+          const hsuite = json['hsuite'];
+          const dovu = json['dovu-2'];
+          const hpack = json['hashpack'];
+
+          setSaucePrice(sauce?.usd ?? null);
+          setSauceChange24h(sauce?.usd_24h_change ?? null);
+
+          setHbarChange24h(hbar?.usd_24h_change ?? null);
+
+          setBonzoPrice(bonzo?.usd ?? null);
+          setBonzoChange24h(bonzo?.usd_24h_change ?? null);
+          setHsuitePrice(hsuite?.usd ?? null);
+          setHsuiteChange24h(hsuite?.usd_24h_change ?? null);
+          setDovuPrice(dovu?.usd ?? null);
+          setDovuChange24h(dovu?.usd_24h_change ?? null);
+          setHpackPrice(hpack?.usd ?? null);
+          setHpackChange24h(hpack?.usd_24h_change ?? null);
         }
       } catch {
         if (!cancelled) {
           setSaucePrice(null);
           setSauceChange24h(null);
           setHbarChange24h(null);
+          setBonzoPrice(null);
+          setBonzoChange24h(null);
+          setHsuitePrice(null);
+          setHsuiteChange24h(null);
+          setDovuPrice(null);
+          setDovuChange24h(null);
+          setHpackPrice(null);
+          setHpackChange24h(null);
         }
       } finally {
         if (!cancelled) setSauceLoading(false);
@@ -191,10 +238,46 @@ export default function Home() {
           <MarketRow
             symbol="SAUCE"
             logo="/saucer-logo.png"
-            price={sauceLoading ? 'Loading...' : saucePrice != null ? `$${saucePrice.toFixed(6)}` : 'N/A'}
+            price={sauceLoading ? 'Loading...' : saucePrice != null ? formatUsdPrice(saucePrice) : 'N/A'}
             change24h={
-              sauceChange24h == null ? 'N/A' : `${sauceChange24h >= 0 ? '+' : ''}${sauceChange24h.toFixed(2)}%`
+              sauceChange24h == null ? 'N/A' : formatChangePct(sauceChange24h)
             }
+            activeBets="0"
+            comingSoon
+          />
+
+          <MarketRow
+            symbol="BONZO"
+            logo="/bonzo-logo.png"
+            price={sauceLoading ? 'Loading...' : bonzoPrice != null ? formatUsdPrice(bonzoPrice) : 'N/A'}
+            change24h={bonzoChange24h == null ? 'N/A' : formatChangePct(bonzoChange24h)}
+            activeBets="0"
+            comingSoon
+          />
+
+          <MarketRow
+            symbol="HSUITE"
+            logo="/hsuite-logo.svg"
+            price={sauceLoading ? 'Loading...' : hsuitePrice != null ? formatUsdPrice(hsuitePrice) : 'N/A'}
+            change24h={hsuiteChange24h == null ? 'N/A' : formatChangePct(hsuiteChange24h)}
+            activeBets="0"
+            comingSoon
+          />
+
+          <MarketRow
+            symbol="DOVU"
+            logo="/dovu-logo.png"
+            price={sauceLoading ? 'Loading...' : dovuPrice != null ? formatUsdPrice(dovuPrice) : 'N/A'}
+            change24h={dovuChange24h == null ? 'N/A' : formatChangePct(dovuChange24h)}
+            activeBets="0"
+            comingSoon
+          />
+
+          <MarketRow
+            symbol="HPACK"
+            logo="/hashpack-logo.png"
+            price={sauceLoading ? 'Loading...' : hpackPrice != null ? formatUsdPrice(hpackPrice) : 'N/A'}
+            change24h={hpackChange24h == null ? 'N/A' : formatChangePct(hpackChange24h)}
             activeBets="0"
             comingSoon
           />
