@@ -29,7 +29,7 @@ import {
   torchPlaceBetPlugin,
   torchPlaceBetPluginToolNames,
   type TorchPlaceBetResult,
-} from "@torch/hedera-agent-kit-torch-plugin";
+} from "@torch-bet/hedera-torch-plugin";
 
 const RUNS_DIR = "runs";
 
