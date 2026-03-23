@@ -19,7 +19,7 @@ contract TorchPredictionMarketERC20 is Ownable {
     // |                    Constants                               |
     // ==============================================================
     uint256 public immutable startTimestamp;
-    uint256 public constant SECONDS_PER_DAY = 1 * 60 * 60;
+    uint256 public constant SECONDS_PER_DAY = 24 * 60 * 60;
     uint256 public constant FEE_BPS = 50;        // 0.5% fee in basis points
     uint256 public constant BPS_DENOM = 10000;   // denominator for basis points (100% = 10000)
     /// @dev Window is MIN/MAX times SECONDS_PER_DAY (e.g. if SECONDS_PER_DAY = 1h, "30 days" = 30h)

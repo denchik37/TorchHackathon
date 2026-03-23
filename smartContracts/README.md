@@ -20,6 +20,24 @@ This repo builds the Torch smart contracts. Deployed contract ids can vary betwe
 - Set `TORCH_CONTRACT_ID` in the consuming services (`frontend`, `torch-agent-kit-bot`, `torch-oracle-resolver`) to the deployed TorchPredictionMarket contract you want to demo.
 - View on HashScan: `https://hashscan.io/mainnet/contract/<TORCH_CONTRACT_ID>`
 
+### ERC20 Markets (Hackathon Mainnet)
+
+> Torch is now multi-token: one prediction engine, many ecosystems, same market logic.
+
+Torch now supports ERC20-collateralized bets on Hedera for the following tokens using `TorchPredictionMarketERC20`.
+
+| Token | Hedera Token ID | Token EVM Address | TorchPredictionMarketERC20 (24h) |
+|------|------------------|-------------------|-----------------------------------|
+| SAUCE | `0.0.731861` | `0x00000000000000000000000000000000000b2c0d` | `0xCf7665963132D224f9aA977edE35FC67487AD4A6` |
+| DOVU | `0.0.3716059` | `0x000000000000000000000000000000000038b9c3` | `0xF623beba5a3406c64360CE15edC4Af9A3C3714D5` |
+| GIB | `0.0.529821` | `0x00000000000000000000000000000000000815bd` | `0xd08B819DaF86019a5e277649Ab3fc56487afcE0b` |
+| PACK | `0.0.127877` | `0x000000000000000000000000000000000001f355` | `0x9fD5F931F4D5f39eeb1c6D5A1810709f6d0e8f5D` |
+| BONZO | `0.0.286331` | `0x0000000000000000000000000000000000045b9b` | `0x328982F0f167645e2aB1bba7578A6304b5e3d993` |
+| HSUITE | `0.0.786931` | `0x00000000000000000000000000000000000c0203` | `0x9988D47F9473797fe1d23be4bDac08100F55f0e9` |
+
+- All ERC20 markets above use `SECONDS_PER_DAY = 24 * 60 * 60` (24h buckets).
+- Each market starts with `nextBetId = 0` and is ready for new bets.
+
 ### Testnet
 - Use the same `TORCH_CONTRACT_ID` approach for your testnet deployment.
 
